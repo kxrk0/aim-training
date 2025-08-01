@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/target-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎯 Aim Trainer Pro</title>
+    <meta name="description" content="Professional FPS aim training for competitive gamers" />
+    
+    <!-- Google Fonts for Gaming UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+      * {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #0a0a0a;
+      }
+      
+      /* Default cursor for UI elements */
+      .ui-element {
+        cursor: pointer !important;
+      }
+      
+      /* Gaming cursor only in game areas */
+      .game-area {
+        cursor: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 

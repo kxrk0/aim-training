@@ -1,0 +1,55 @@
+{
+  "name": "aim-training-3d",
+  "version": "1.0.0",
+  "description": "Modern web-based FPS aim trainer with multiplayer capabilities",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "cd server && npm run start",
+    "lint": "npm run lint:client && npm run lint:server",
+    "lint:client": "cd client && npm run lint",
+    "lint:server": "cd server && npm run lint",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "clean": "rimraf client/dist server/dist client/node_modules server/node_modules node_modules",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "db:push": "cd server && npx prisma db push",
+    "db:studio": "cd server && npx prisma studio",
+    "db:generate": "cd server && npx prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/aim-trainer-3d.git"
+  },
+  "keywords": [
+    "aim-trainer",
+    "fps",
+    "gaming",
+    "react",
+    "three.js",
+    "multiplayer",
+    "websocket"
+  ],
+  "author": "AIM TRAINER PRO Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+} 

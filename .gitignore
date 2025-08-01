@@ -1,0 +1,277 @@
+# ===============================================
+# AIM TRAINING 3D - PROJECT GITIGNORE
+# ===============================================
+
+# ===============================================
+# NODE.JS
+# ===============================================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output/
+
+# Grunt intermediate storage
+.grunt/
+
+# Bower dependency directory
+bower_components/
+
+# node-waf configuration
+.lock-wscript
+
+# ===============================================
+# BUILD OUTPUTS
+# ===============================================
+# Distribution directories
+dist/
+build/
+client/dist/
+server/dist/
+client/build/
+server/build/
+
+# TypeScript build info
+*.tsbuildinfo
+.tsbuildinfo
+
+# ===============================================
+# ENVIRONMENT & CONFIG
+# ===============================================
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Keep example environment files
+!.env.example
+
+# ===============================================
+# DATABASE
+# ===============================================
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Prisma development database
+server/prisma/dev.db
+server/prisma/dev.db-journal
+
+# Database dumps
+*.sql.gz
+*.dump
+
+# Redis database files
+*.rdb
+dump.rdb
+
+# ===============================================
+# LOGS
+# ===============================================
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Firebase logs
+firebase-debug.log
+firebase-debug.*.log
+
+# Docker logs
+docker-compose.override.yml
+
+# ===============================================
+# CACHE & TEMPORARY
+# ===============================================
+# Cache directories
+.cache/
+.temp/
+.tmp/
+.vite/
+
+# Webpack cache
+.webpack/
+
+# Next.js cache (if used)
+.next/
+
+# Nuxt.js cache (if used)
+.nuxt/
+
+# ===============================================
+# IDE & EDITORS
+# ===============================================
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ===============================================
+# OPERATING SYSTEM
+# ===============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ===============================================
+# FIREBASE
+# ===============================================
+# Firebase cache
+.firebase/
+.firebaserc
+
+# Firebase functions
+functions/node_modules/
+functions/.env
+functions/lib/
+
+# ===============================================
+# DOCKER
+# ===============================================
+# Docker
+.dockerignore
+
+# ===============================================
+# TESTING
+# ===============================================
+# Test coverage
+coverage/
+.nyc_output/
+
+# Jest
+.jest/
+
+# ===============================================
+# PACKAGE MANAGERS
+# ===============================================
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# PNPM
+.pnpm-store/
+
+# ===============================================
+# MISC
+# ===============================================
+# Miscellaneous
+*.tgz
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.parcel-cache/
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===============================================
+# PROJECT SPECIFIC
+# ===============================================
+# Generated TypeScript declarations
+*.d.ts.map
+
+# Three.js cache
+.three-cache/
+
+# Game assets cache (if any)
+.assets-cache/ 

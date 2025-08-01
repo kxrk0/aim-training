@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles with scroll fixes */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: 'Orbitron', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow-x: hidden;
+  background: #0f1419;
+}
+
+#root {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.8);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 1);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.8) rgba(30, 41, 59, 0.5);
+}
+
+@layer base {
+  html {
+    font-family: 'Orbitron', monospace;
+  }
+  
+  body {
+    @apply bg-gaming-dark text-white;
+    font-family: 'Orbitron', monospace;
+  }
+}
+
+@layer components {
+  .gaming-button {
+    @apply bg-gaming-primary text-gaming-dark font-bold py-3 px-6 rounded-lg 
+           transform transition-all duration-200 hover:scale-105 hover:shadow-lg
+           active:scale-95 border-2 border-gaming-primary hover:border-gaming-accent;
+  }
+  
+  .gaming-button-secondary {
+    @apply bg-transparent text-gaming-primary font-bold py-3 px-6 rounded-lg 
+           transform transition-all duration-200 hover:scale-105 hover:shadow-lg
+           active:scale-95 border-2 border-gaming-primary hover:bg-gaming-primary
+           hover:text-gaming-dark;
+  }
+  
+  .gaming-input {
+    @apply bg-gray-900 text-white border-2 border-gray-700 rounded-lg px-4 py-2
+           focus:border-gaming-primary focus:outline-none transition-colors;
+  }
+  
+  .hud-element {
+    @apply bg-black/50 backdrop-blur-sm border border-gaming-primary/30 rounded-lg p-4;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 0 10px currentColor;
+  }
+  
+  .glow {
+    box-shadow: 0 0 20px currentColor;
+  }
+  
+  .crosshair-style {
+    cursor: crosshair;
+  }
+}
+
+/* Cursor management */
+.ui-element {
+  cursor: default !important;
+}
+
+.game-area {
+  cursor: none !important;
+}
+
+.game-area.pointer-locked {
+  cursor: none !important;
+} 

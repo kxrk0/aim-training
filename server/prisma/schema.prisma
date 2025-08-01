@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String?  // Made optional for OAuth users
+  
+  // OAuth fields
+  provider    String?  // 'local', 'google', 'steam'
+  providerId  String?  // OAuth provider user ID
+  avatar      String?  // Profile picture URL
+  
+  // Game stats
+  level       Int      @default(1)
+  totalScore  Int      @default(0)
+  totalShots  Int      @default(0)
+  totalHits   Int      @default(0)
+  hoursPlayed Float    @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  gameSessions    GameSession[]
+  scores          Score[]
+  achievements    UserAchievement[]
+  leaderboard     Leaderboard[]
+  
+  @@map("users")
+}
+
+model GameSession {
+  id        String   @id @default(cuid())
+  userId    String
+  gameMode  String
+  duration  Int      // in seconds
+  score     Int
+  accuracy  Float
+  hits      Int
+  misses    Int
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("game_sessions")
+}
+
+model Score {
+  id         String   @id @default(cuid())
+  userId     String
+  gameMode   String
+  score      Int
+  accuracy   Float
+  reactionTime Float
+  createdAt  DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("scores")
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  icon        String
+  requirement String // JSON string describing requirement
+  points      Int    @default(0)
+  
+  users UserAchievement[]
+  
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+  
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Leaderboard {
+  id        String   @id @default(cuid())
+  userId    String
+  gameMode  String
+  score     Int
+  rank      Int
+  period    String   // 'daily', 'weekly', 'monthly', 'all-time'
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, gameMode, period])
+  @@map("leaderboard")
+} 
