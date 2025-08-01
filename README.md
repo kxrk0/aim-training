@@ -507,6 +507,81 @@ VITE_ENABLE_PERFORMANCE_MONITORING="true"
 - **Custom Training**: User-generated training scenarios
 - **Social Features**: Friend systems and social challenges
 
+### 🎯 **Phase 8: Advanced Sensitivity Finder System** (In Development)
+
+#### **🔍 Sensitivity Finder Module**
+- **Multi-Test Training Scenarios**: Comprehensive sensitivity assessment suite
+  - **Flick Shots Test**: Dynamic target appearance/disappearance training
+  - **Tracking Test**: Moving target following and aim maintenance
+  - **Target Switching Test**: Rapid multi-target engagement scenarios
+  - **Micro Correction Test**: Precision-based fine aim adjustment training
+- **Performance Data Collection**: Real-time accuracy, reaction time, and movement consistency tracking
+- **Adaptive Test Difficulty**: Dynamic adjustment based on user skill level
+
+#### **🧠 Algorithm-Based Sensitivity Recommendation**
+- **Multi-Metric Analysis**: Performance evaluation across accuracy, speed, and consistency
+- **Game Style Optimization**: Tailored recommendations for different playstyles
+  - **Flick-Heavy**: High-speed target acquisition optimization
+  - **Tracking-Heavy**: Smooth movement and target following focus
+  - **Hybrid**: Balanced approach for versatile gameplay
+- **Machine Learning Integration**: Continuous refinement based on accumulated user data
+- **Statistical Modeling**: Advanced algorithms for personalized sensitivity calculation
+
+#### **🎮 Game-Specific Sensitivity Conversion**
+- **Multi-Game Support**: Comprehensive FPS game compatibility
+  - **Valorant**: Riot Games sensitivity scaling
+  - **CS2**: Source engine sensitivity system
+  - **Apex Legends**: Respawn Entertainment scaling
+  - **Fortnite**: Epic Games sensitivity mechanics
+  - **Overwatch 2**: Blizzard Entertainment system
+- **Advanced Conversion Mathematics**: 
+  - **360° Distance Calculations**: Precise mouse movement to screen rotation ratios
+  - **FOV Adjustments**: Horizontal/vertical field of view compensation
+  - **DPI Integration**: Hardware-specific sensitivity scaling
+  - **Sensitivity Scaling Types**: Game engine specific conversion formulas
+
+#### **⚙️ Advanced Settings Interface**
+- **Pre-Test Configuration Panel**:
+  - **Target Game Selection**: Dropdown with popular FPS titles
+  - **Manual Sensitivity Input**: Current sensitivity import/adjustment
+  - **DPI Configuration**: Hardware mouse DPI settings
+  - **Test Customization**: Difficulty, target speed, count, and duration controls
+- **Real-Time Adjustments**: Mid-test sensitivity modification capabilities
+- **Hardware Detection**: Automatic mouse DPI detection when possible
+
+#### **👤 User Profiles & History Tracking**
+- **Multi-Profile Support**: Individual user accounts with personalized settings
+- **Performance History**: Long-term sensitivity test tracking and analysis
+- **Progress Visualization**: Performance evolution charts and improvement trends
+- **Session Comparison**: Historical performance benchmarking
+- **Achievement System**: Sensitivity training milestones and rewards
+
+#### **📊 Visual Feedback & Analytics**
+- **Real-Time Performance HUD**:
+  - **Live Accuracy Percentage**: Instantaneous hit rate display
+  - **Time-to-Hit Metrics**: Target acquisition speed visualization
+  - **Movement Heat Maps**: Mouse movement pattern analysis
+  - **Consistency Indicators**: Shot grouping and precision metrics
+- **Post-Test Analytics Dashboard**:
+  - **Comprehensive Score Breakdown**: Detailed performance analysis
+  - **Improvement Suggestions**: AI-powered training recommendations
+  - **Comparative Analysis**: Performance ranking against previous sessions
+  - **Sensitivity Confidence Rating**: Algorithm certainty in recommendations
+
+#### **🏗️ Technical Implementation**
+- **Modular Architecture**: Plug-and-play system for future game additions
+- **Performance Optimization**: Low-latency input processing for competitive accuracy
+- **Lightweight Resource Usage**: Optimized for low-end system compatibility
+- **Data Persistence**: Cloud-based sensitivity profile synchronization
+- **Cross-Platform Compatibility**: Consistent experience across different devices
+
+#### **🎨 User Experience Design**
+- **Intuitive Interface**: Streamlined sensitivity finder workflow
+- **Visual Polish**: Professional-grade UI with smooth animations
+- **Accessibility Features**: Support for various input methods and disabilities
+- **Tutorial System**: Guided sensitivity finding process for new users
+- **Mobile Responsive**: Touch-friendly interface for mobile sensitivity testing
+
 ## 🎯 **Core Technologies Deep Dive**
 
 ### **FPS Camera System**
