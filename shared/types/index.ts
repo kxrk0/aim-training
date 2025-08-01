@@ -603,4 +603,264 @@ export interface AppSettings {
     preferredFormat: TournamentFormat
     notifications: boolean
   }
+}
+
+// 🆕 SENSITIVITY FINDER SYSTEM TYPES
+export type SensitivityTestType = 'flick' | 'tracking' | 'target-switching' | 'micro-correction'
+export type SupportedGame = 'valorant' | 'cs2' | 'apex' | 'fortnite' | 'overwatch2' | 'cod' | 'rainbow6'
+export type PlayStyle = 'flick-heavy' | 'tracking-heavy' | 'hybrid'
+
+export interface SensitivityTestConfig {
+  testType: SensitivityTestType
+  duration: number // seconds
+  targetCount: number
+  targetSize: number // 0.5 - 2.0 multiplier
+  targetSpeed?: number // for tracking/moving targets
+  difficulty: Difficulty
+  spawnPattern: 'random' | 'circular' | 'grid' | 'spiral'
+}
+
+export interface SensitivityTestResult {
+  id: string
+  testType: SensitivityTestType
+  userId: string
+  config: SensitivityTestConfig
+  
+  // Performance Metrics
+  accuracy: number // 0-100%
+  averageTimeToHit: number // milliseconds
+  totalHits: number
+  totalMisses: number
+  
+  // Advanced Metrics
+  flickOvershoot: number // average overshoot distance
+  flickUndershoot: number // average undershoot distance
+  trackingStability: number // 0-100, lower is more stable
+  correctionEfficiency: number // 0-100, higher is better
+  reactionConsistency: number // standard deviation of reaction times
+  
+  // Raw Data
+  hitPositions: Array<{x: number, y: number, time: number}>
+  mouseTrajectory: Array<{x: number, y: number, timestamp: number}>
+  targetSequence: Array<{
+    id: string
+    spawnTime: number
+    hitTime?: number
+    position: {x: number, y: number}
+    wasHit: boolean
+  }>
+  
+  // Test Environment
+  currentSensitivity: number
+  currentDPI: number
+  testedAt: string
+  sessionDuration: number
+}
+
+export interface SensitivityRecommendation {
+  playStyle: PlayStyle
+  recommendedSensitivity: number
+  confidenceScore: number // 0-100%
+  reasoning: string[]
+  
+  // Game-specific recommendations
+  gameRecommendations: {
+    [key in SupportedGame]?: {
+      sensitivity: number
+      effectiveDPI: number
+      cm360: number // centimeters for 360° turn
+    }
+  }
+  
+  // Performance predictions
+  expectedImprovement: {
+    accuracy: number // % improvement expected
+    consistency: number
+    reactionTime: number
+  }
+}
+
+export interface GameSensitivityConfig {
+  id: SupportedGame
+  name: string
+  displayName: string
+  
+  // Sensitivity calculation parameters
+  sensitivityScale: number // base sensitivity multiplier
+  fovHorizontal: number // default horizontal FOV
+  fovVertical: number // default vertical FOV
+  
+  // Conversion factors
+  yawMultiplier: number // for horizontal sensitivity
+  pitchMultiplier?: number // for vertical sensitivity (if different)
+  
+  // Game-specific settings
+  hasVerticalSensitivity: boolean
+  supportsDPIScaling: boolean
+  minSensitivity: number
+  maxSensitivity: number
+  
+  // Common DPI values for this game
+  commonDPIValues: number[]
+  commonSensitivities: number[]
+}
+
+export interface UserSensitivityProfile {
+  userId: string
+  
+  // Current Setup
+  primaryGame: SupportedGame
+  currentSensitivity: number
+  currentDPI: number
+  mouseModel?: string
+  monitorSize?: number // inches
+  
+  // Test History
+  testResults: SensitivityTestResult[]
+  recommendations: SensitivityRecommendation[]
+  
+  // Performance Tracking
+  performanceHistory: Array<{
+    date: string
+    averageAccuracy: number
+    averageReactionTime: number
+    consistencyScore: number
+    recommendedSensitivity: number
+  }>
+  
+  // Preferences
+  preferredPlayStyle: PlayStyle
+  testPreferences: {
+    defaultDuration: number
+    preferredDifficulty: Difficulty
+    autoStartTests: boolean
+    showRealTimeStats: boolean
+  }
+  
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SensitivityConversion {
+  fromGame: SupportedGame
+  toGame: SupportedGame
+  fromSensitivity: number
+  toSensitivity: number
+  fromDPI: number
+  toDPI: number
+  
+  // Calculation details
+  fromCm360: number // cm for 360° turn
+  toCm360: number
+  effectiveDPIFrom: number
+  effectiveDPITo: number
+  
+  // Conversion accuracy
+  conversionAccuracy: 'exact' | 'approximate' | 'estimated'
+  notes?: string[]
+}
+
+export interface SensitivityFinderState {
+  // Current Test State
+  isTestActive: boolean
+  currentTest: SensitivityTestConfig | null
+  testProgress: {
+    completedTests: number
+    totalTests: number
+    currentTestProgress: number // 0-100%
+  }
+  
+  // Test Results
+  currentSession: {
+    results: SensitivityTestResult[]
+    startTime: string
+    recommendation?: SensitivityRecommendation
+  }
+  
+  // User Profile
+  userProfile: UserSensitivityProfile | null
+  
+  // Settings
+  testSettings: {
+    selectedTests: SensitivityTestType[]
+    difficulty: Difficulty
+    customConfig: Partial<SensitivityTestConfig>
+  }
+  
+  // Game Conversion
+  conversionSettings: {
+    sourceGame: SupportedGame
+    targetGames: SupportedGame[]
+    sourceSensitivity: number
+    sourceDPI: number
+  }
+  
+  // UI State
+  activePanel: 'tests' | 'results' | 'conversion' | 'history' | 'settings'
+  isLoading: boolean
+  error: string | null
+}
+
+// Analytics & Visualization Types
+export interface MouseHeatmapData {
+  points: Array<{
+    x: number
+    y: number
+    intensity: number // 0-1, how much time spent at this point
+    accuracy: number // hit accuracy at this position
+  }>
+  bounds: {
+    minX: number
+    maxX: number
+    minY: number
+    maxY: number
+  }
+}
+
+export interface PerformanceChart {
+  type: 'accuracy' | 'reaction-time' | 'consistency' | 'improvement'
+  data: Array<{
+    x: number | string
+    y: number
+    label?: string
+    color?: string
+  }>
+  title: string
+  xAxisLabel: string
+  yAxisLabel: string
+}
+
+export interface SensitivityAnalytics {
+  userId: string
+  
+  // Overall Performance
+  overallStats: {
+    totalTests: number
+    averageAccuracy: number
+    averageReactionTime: number
+    mostImprovedMetric: string
+    weakestArea: SensitivityTestType
+    strongestArea: SensitivityTestType
+  }
+  
+  // Per-test Analytics
+  testAnalytics: {
+    [key in SensitivityTestType]: {
+      averageAccuracy: number
+      averageReactionTime: number
+      improvementTrend: number // -1 to 1, negative is declining
+      lastTested: string
+      bestScore: number
+    }
+  }
+  
+  // Visualization Data
+  heatmapData: MouseHeatmapData
+  performanceCharts: PerformanceChart[]
+  
+  // Recommendations
+  improvementSuggestions: string[]
+  nextRecommendedTest: SensitivityTestType
+  
+  generatedAt: string
 } 

@@ -273,14 +273,28 @@ export const useAuthStore = create<AuthStore>()(
 
         syncFirebaseUser: async (firebaseUser) => {
           if (firebaseUser) {
-            set({ authProvider: 'firebase' })
-            // You would typically fetch the user from your backend here
-            // and update the 'user' state.
-            // For now, we'll just set the firebaseUser to the user state.
-            // This is a placeholder.
-            set({ user: { id: firebaseUser.uid, email: firebaseUser.email || '', username: '', level: 0, totalScore: 0, totalShots: 0, totalHits: 0, hoursPlayed: 0 } })
+            set({ 
+              authProvider: 'firebase',
+              firebaseUser,
+              isAuthenticated: true,
+              user: { 
+                id: firebaseUser.uid, 
+                email: firebaseUser.email || '', 
+                username: firebaseUser.displayName || 'Elite Gamer', 
+                level: 1, 
+                totalScore: 0, 
+                totalShots: 0, 
+                totalHits: 0, 
+                hoursPlayed: 0 
+              }
+            })
           } else {
-            set({ authProvider: null, user: null })
+            set({ 
+              authProvider: null, 
+              user: null, 
+              firebaseUser: null,
+              isAuthenticated: false 
+            })
           }
         }
       }),

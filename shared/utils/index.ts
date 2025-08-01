@@ -166,10 +166,13 @@ export const isValidPassword = (password: string): boolean => {
   return password.length >= 8
 }
 
-// Local storage utilities
+// Local storage utilities - Browser only
 export const saveToStorage = (key: string, value: any): void => {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    const globalObj = globalThis as any
+    if (globalObj.window && globalObj.window.localStorage) {
+      globalObj.window.localStorage.setItem(key, JSON.stringify(value))
+    }
   } catch (error) {
     console.warn(`Failed to save to localStorage: ${key}`, error)
   }
@@ -177,8 +180,12 @@ export const saveToStorage = (key: string, value: any): void => {
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   try {
-    const item = localStorage.getItem(key)
-    return item ? JSON.parse(item) : defaultValue
+    const globalObj = globalThis as any
+    if (globalObj.window && globalObj.window.localStorage) {
+      const item = globalObj.window.localStorage.getItem(key)
+      return item ? JSON.parse(item) : defaultValue
+    }
+    return defaultValue
   } catch (error) {
     console.warn(`Failed to load from localStorage: ${key}`, error)
     return defaultValue
@@ -187,7 +194,10 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 
 export const removeFromStorage = (key: string): void => {
   try {
-    localStorage.removeItem(key)
+    const globalObj = globalThis as any
+    if (globalObj.window && globalObj.window.localStorage) {
+      globalObj.window.localStorage.removeItem(key)
+    }
   } catch (error) {
     console.warn(`Failed to remove from localStorage: ${key}`, error)
   }
@@ -195,7 +205,8 @@ export const removeFromStorage = (key: string): void => {
 
 // Debug utilities
 export const debugLog = (message: string, data?: any): void => {
-  if (process.env.NODE_ENV === 'development' || process.env.VITE_ENABLE_DEBUG === 'true') {
+  const globalObj = globalThis as any
+  if (process.env.NODE_ENV === 'development' || (globalObj.window && globalObj.window.VITE_ENABLE_DEBUG === 'true')) {
     console.log(`[AimTrainer] ${message}`, data || '')
   }
 }

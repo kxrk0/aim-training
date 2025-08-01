@@ -144,7 +144,11 @@ export const login = async (req: Request, res: Response) => {
       throw new ApiError(401, 'Invalid email or password')
     }
 
-    // Check password
+    // Check password - OAuth users may not have a password
+    if (!user.password) {
+      throw new ApiError(401, 'Invalid email or password')
+    }
+    
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       throw new ApiError(401, 'Invalid email or password')

@@ -12,6 +12,18 @@ import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { PartyLobby } from '@/components/party/PartyLobby'
 import { CompetitionMatchmaking } from '@/components/competition/CompetitionMatchmaking'
 import { TournamentBrowser } from '@/components/tournament/TournamentBrowser'
+import { SensitivityFinder } from './components/sensitivity/SensitivityFinder'
+
+// Phase 8 Features
+import { PerformanceAnalytics } from '@/components/analytics/PerformanceAnalytics'
+import { AdaptiveTraining } from '@/components/training/AdaptiveTraining'
+import { CoachingSystem } from '@/components/coaching/CoachingSystem'
+import { HardwareOptimization } from '@/components/hardware/HardwareOptimization'
+import { ReplaySystem } from '@/components/replay/ReplaySystem'
+import { TrainingGuilds } from '@/components/community/TrainingGuilds'
+import { CustomTraining } from '@/components/training/CustomTraining'
+import { SocialFeatures } from '@/components/social/SocialFeatures'
+
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
 
 function App() {
@@ -36,6 +48,17 @@ function App() {
           <Route path="party" element={<PartyLobby />} />
           <Route path="competition" element={<CompetitionMatchmaking />} />
           <Route path="tournaments" element={<TournamentBrowser />} />
+          <Route path="sensitivity" element={<SensitivityFinder />} />
+          
+          {/* Phase 8 Advanced Features */}
+          <Route path="analytics" element={<PerformanceAnalytics />} />
+          <Route path="adaptive-training" element={<AdaptiveTraining />} />
+          <Route path="coaching" element={<CoachingSystem />} />
+          <Route path="hardware" element={<HardwareOptimization />} />
+          <Route path="replay" element={<ReplaySystem />} />
+          <Route path="guilds" element={<TrainingGuilds />} />
+          <Route path="custom-training" element={<CustomTraining />} />
+          <Route path="social" element={<SocialFeatures />} />
         </Route>
       </Routes>
     </Router>

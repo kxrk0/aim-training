@@ -19,6 +19,7 @@ import authRoutes from './routes/auth'
 import userRoutes from './routes/users'
 import gameRoutes from './routes/games'
 import leaderboardRoutes from './routes/leaderboards'
+import sensitivityRoutes from './routes/sensitivity'
 
 // Socket events
 import { setupPartyEvents } from './sockets/partyEvents'
@@ -85,7 +86,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
-}))
+}) as any)
 
 // Passport middleware
 app.use(passport.initialize() as any)
@@ -105,6 +106,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/leaderboards', leaderboardRoutes)
+app.use('/api/sensitivity', sensitivityRoutes)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

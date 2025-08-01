@@ -130,6 +130,58 @@ class ApiService {
   async healthCheck(): Promise<AxiosResponse<ApiResponse>> {
     return this.api.get('/health')
   }
+
+  // 🆕 Sensitivity endpoints
+  async getSensitivityProfile(): Promise<AxiosResponse<any>> {
+    return this.api.get('/sensitivity/profile')
+  }
+
+  async updateSensitivityProfile(data: any): Promise<AxiosResponse<any>> {
+    return this.api.put('/sensitivity/profile', data)
+  }
+
+  async submitTestResult(testResult: any): Promise<AxiosResponse<any>> {
+    return this.api.post('/sensitivity/test-result', testResult)
+  }
+
+  async getTestResults(params: {
+    testType?: string
+    limit?: number
+    offset?: number
+    startDate?: string
+    endDate?: string
+  } = {}): Promise<AxiosResponse<any>> {
+    return this.api.get('/sensitivity/test-results', { params })
+  }
+
+  async generateRecommendation(testResultIds?: string[]): Promise<AxiosResponse<any>> {
+    return this.api.post('/sensitivity/recommendation', { testResultIds })
+  }
+
+  async convertSensitivity(data: {
+    fromGame: string
+    toGame: string
+    sensitivity: number
+    dpi: number
+  }): Promise<AxiosResponse<any>> {
+    return this.api.post('/sensitivity/convert', data)
+  }
+
+  async getConversionHistory(limit?: number): Promise<AxiosResponse<any>> {
+    return this.api.get('/sensitivity/conversions', { params: { limit } })
+  }
+
+  async getAnalytics(): Promise<AxiosResponse<any>> {
+    return this.api.get('/sensitivity/analytics')
+  }
+
+  async deleteTestResult(id: string): Promise<AxiosResponse<any>> {
+    return this.api.delete(`/sensitivity/test-result/${id}`)
+  }
+
+  async clearSensitivityData(): Promise<AxiosResponse<any>> {
+    return this.api.delete('/sensitivity/profile/clear')
+  }
 }
 
 export const apiService = new ApiService()

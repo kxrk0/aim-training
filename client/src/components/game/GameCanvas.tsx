@@ -180,8 +180,8 @@ export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameC
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(60)
   const [isPointerLocked, setIsPointerLocked] = useState(false)
-  const intervalRef = useRef<number>()
-  const spawnIntervalRef = useRef<number>()
+  const intervalRef = useRef<NodeJS.Timeout>()
+  const spawnIntervalRef = useRef<NodeJS.Timeout>()
 
   // Monitor pointer lock state
   useEffect(() => {

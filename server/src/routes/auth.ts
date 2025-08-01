@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import passport from 'passport'
 import jwt from 'jsonwebtoken'
 import { register, login, getProfile, updateProfile, verifyToken } from '../controllers/authController'
@@ -22,7 +22,7 @@ router.get('/google',
 
 router.get('/google/callback',
   passport.authenticate('google', { session: false }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     try {
       const user = req.user as any
       
@@ -52,7 +52,7 @@ router.get('/steam',
 
 router.get('/steam/return',
   passport.authenticate('steam', { session: false }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     try {
       const user = req.user as any
       
@@ -76,7 +76,7 @@ router.get('/steam/return',
 )
 
 // OAuth success endpoint for frontend
-router.get('/oauth/success', verifyToken, asyncHandler(async (req, res) => {
+router.get('/oauth/success', verifyToken, asyncHandler(async (req: Request, res: Response) => {
   const user = req.user
   res.json({
     message: 'OAuth authentication successful',

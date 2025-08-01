@@ -36,6 +36,7 @@ model User {
   scores          Score[]
   achievements    UserAchievement[]
   leaderboard     Leaderboard[]
+  sensitivityProfile SensitivityProfile?
   
   @@map("users")
 }
@@ -105,9 +106,168 @@ model Leaderboard {
   rank      Int
   period    String   // 'daily', 'weekly', 'monthly', 'all-time'
   createdAt DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, gameMode, period])
   @@map("leaderboard")
+}
+
+// 🆕 SENSITIVITY FINDER SYSTEM MODELS
+model SensitivityProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  
+  // Current Setup
+  primaryGame       String   @default("valorant")
+  currentSensitivity Float   @default(0.5)
+  currentDPI        Int      @default(800)
+  mouseModel        String?
+  monitorSize       Int?     @default(24)
+  
+  // Preferences
+  preferredPlayStyle String  @default("hybrid") // 'flick-heavy', 'tracking-heavy', 'hybrid'
+  
+  // Test Preferences
+  defaultDuration          Int     @default(60)
+  preferredDifficulty      String  @default("medium")
+  autoStartTests           Boolean @default(false)
+  showRealTimeStats        Boolean @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testResults       SensitivityTestResult[]
+  recommendations   SensitivityRecommendation[]
+
+  @@map("sensitivity_profiles")
+}
+
+model SensitivityTestResult {
+  id          String   @id @default(cuid())
+  userId      String
+  profileId   String
+  
+  // Test Configuration
+  testType    String   // 'flick', 'tracking', 'target-switching', 'micro-correction'
+  difficulty  String
+  duration    Int
+  targetCount Int
+  targetSize  Float
+  targetSpeed Float?
+  spawnPattern String
+  
+  // Performance Metrics
+  accuracy            Float
+  averageTimeToHit    Float
+  totalHits           Int
+  totalMisses         Int
+  
+  // Advanced Metrics
+  flickOvershoot      Float @default(0)
+  flickUndershoot     Float @default(0)
+  trackingStability   Float @default(100)
+  correctionEfficiency Float @default(0)
+  reactionConsistency Float @default(0)
+  
+  // Test Environment
+  currentSensitivity  Float
+  currentDPI          Int
+  
+  // Raw Data (JSON fields)
+  hitPositions        String // JSON array of hit positions
+  mouseTrajectory     String // JSON array of mouse movements
+  targetSequence      String // JSON array of target data
+  
+  createdAt    DateTime @default(now())
+
+  profile      SensitivityProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("sensitivity_test_results")
+}
+
+model SensitivityRecommendation {
+  id               String   @id @default(cuid())
+  userId           String
+  profileId        String
+  
+  // Recommendation Data
+  playStyle        String   // 'flick-heavy', 'tracking-heavy', 'hybrid'
+  recommendedSensitivity Float
+  confidenceScore  Int      // 0-100
+  reasoning        String   // JSON array of reasons
+  
+  // Game-specific recommendations (JSON)
+  gameRecommendations String // JSON object with game-specific data
+  
+  // Performance predictions
+  expectedAccuracyImprovement    Float @default(0)
+  expectedConsistencyImprovement Float @default(0)
+  expectedReactionTimeImprovement Float @default(0)
+  
+  // Based on test results
+  basedOnResults   String   // JSON array of test result IDs
+  
+  createdAt        DateTime @default(now())
+
+  profile          SensitivityProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("sensitivity_recommendations")
+}
+
+model SensitivityConversion {
+  id              String   @id @default(cuid())
+  userId          String
+  
+  // Conversion Details
+  fromGame        String
+  toGame          String
+  fromSensitivity Float
+  toSensitivity   Float
+  fromDPI         Int
+  toDPI           Int
+  
+  // Calculation Details
+  fromCm360       Float
+  toCm360         Float
+  effectiveDPIFrom Int
+  effectiveDPITo   Int
+  
+  // Metadata
+  conversionAccuracy String // 'exact', 'approximate', 'estimated'
+  notes            String?  // Additional notes
+  
+  createdAt       DateTime @default(now())
+
+  @@map("sensitivity_conversions")
+}
+
+model SensitivityAnalytics {
+  id              String   @id @default(cuid())
+  userId          String
+  profileId       String
+  
+  // Overall Statistics
+  totalTests      Int
+  averageAccuracy Float
+  averageReactionTime Float
+  mostImprovedMetric String
+  weakestArea     String
+  strongestArea   String
+  
+  // Per-test Analytics (JSON)
+  testAnalytics   String // JSON object with per-test type stats
+  
+  // Visualization Data (JSON)
+  heatmapData     String // JSON object with heatmap points
+  performanceCharts String // JSON array of chart data
+  
+  // Recommendations
+  improvementSuggestions String // JSON array of suggestions
+  nextRecommendedTest    String
+  
+  generatedAt     DateTime @default(now())
+
+  @@map("sensitivity_analytics")
 } 
