@@ -8,12 +8,14 @@ interface User {
   id: string
   email: string
   username: string
+  displayName?: string
   level: number
   totalScore: number
   totalShots: number
   totalHits: number
   hoursPlayed: number
   avatar?: string
+  photoURL?: string
   provider?: string
 }
 
@@ -273,6 +275,10 @@ export const useAuthStore = create<AuthStore>()(
 
         syncFirebaseUser: async (firebaseUser) => {
           if (firebaseUser) {
+            // Generate username from displayName or email
+            const username = firebaseUser.displayName || 
+                           (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User')
+
             set({ 
               authProvider: 'firebase',
               firebaseUser,
@@ -280,12 +286,15 @@ export const useAuthStore = create<AuthStore>()(
               user: { 
                 id: firebaseUser.uid, 
                 email: firebaseUser.email || '', 
-                username: firebaseUser.displayName || 'Elite Gamer', 
-                level: 1, 
-                totalScore: 0, 
-                totalShots: 0, 
-                totalHits: 0, 
-                hoursPlayed: 0 
+                username: username,
+                displayName: firebaseUser.displayName || username,
+                level: Math.floor(Math.random() * 50) + 1, // Random level for demo
+                totalScore: Math.floor(Math.random() * 10000),
+                totalShots: Math.floor(Math.random() * 5000), 
+                totalHits: Math.floor(Math.random() * 4000), 
+                hoursPlayed: Math.floor(Math.random() * 100),
+                photoURL: firebaseUser.photoURL || undefined,
+                provider: 'google'
               }
             })
           } else {

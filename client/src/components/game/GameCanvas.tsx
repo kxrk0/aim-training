@@ -2,12 +2,25 @@ import { useRef, useEffect, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
+import { EnhancedTarget } from './EnhancedTarget'
+import { useAudioSystem } from './SoundSystem'
+import { useLevelStore } from '@/stores/levelStore'
+import { useGameStore } from '@/stores/gameStore'
+import { ModernGameHUD } from './ModernGameHUD'
+import { ESCMenu } from './ESCMenu'
+import { HitEffects } from './HitEffects'
 
 interface GameCanvasProps {
   gameMode: string
   isActive: boolean
   onGameStart: () => void
   onGameEnd: () => void
+}
+
+interface Target {
+  id: string
+  position: [number, number, number]
+  spawnTime: number
 }
 
 // FPS Camera Controller
@@ -176,12 +189,78 @@ function ShootingSystem({ isActive, onTargetHit }: {
 }
 
 export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameCanvasProps) {
-  const [targets, setTargets] = useState<Array<{ id: string, position: [number, number, number] }>>([])
+  const [targets, setTargets] = useState<Target[]>([])
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(60)
   const [isPointerLocked, setIsPointerLocked] = useState(false)
+  const [hits, setHits] = useState(0)
+  const [misses, setMisses] = useState(0)
+  const [accuracy, setAccuracy] = useState(100)
+  const [reactionTimes, setReactionTimes] = useState<number[]>([])
+  const [hitEffects, setHitEffects] = useState<any[]>([])
+  const [isPaused, setIsPaused] = useState(false)
+  const [showESCMenu, setShowESCMenu] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout>()
   const spawnIntervalRef = useRef<NodeJS.Timeout>()
+  const gameStartTime = useRef<number>(Date.now())
+
+  // Get game store functions
+  const {
+    startGame,
+    endGame,
+    hitTarget,
+    missTarget,
+    pauseGame,
+    resumeGame,
+    isPaused: gamePaused
+  } = useGameStore()
+
+  // Get level store functions
+  const { gainXP, calculateXPFromPerformance } = useLevelStore()
+
+  // Get audio system
+  const {
+    playHitSound,
+    playMissSound,
+    playLevelUpSound,
+    playXPGainSound,
+    setMasterVolume
+  } = useAudioSystem()
+
+  // Use game store isPaused state
+  const actualIsPaused = isPaused || gamePaused
+
+  // Utility functions for effects
+  const createHitEffect = (position: THREE.Vector3, accuracy: number) => {
+    return {
+      id: `hit-${Date.now()}`,
+      position: [position.x, position.y, position.z] as [number, number, number],
+      type: 'hit' as const,
+      accuracy,
+      timestamp: Date.now()
+    }
+  }
+
+  const createMissEffect = (position: THREE.Vector3) => {
+    return {
+      id: `miss-${Date.now()}`,
+      position: [position.x, position.y, position.z] as [number, number, number],
+      type: 'miss' as const,
+      timestamp: Date.now()
+    }
+  }
+
+  const triggerShake = (intensity: number, duration: number) => {
+    // Simple screen shake implementation
+    if (document.body) {
+      document.body.style.transform = `translate(${Math.random() * intensity - intensity/2}px, ${Math.random() * intensity - intensity/2}px)`
+      setTimeout(() => {
+        if (document.body) {
+          document.body.style.transform = 'translate(0, 0)'
+        }
+      }, duration)
+    }
+  }
 
   // Monitor pointer lock state
   useEffect(() => {
@@ -193,9 +272,9 @@ export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameC
     return () => document.removeEventListener('pointerlockchange', handlePointerLockChange)
   }, [])
 
-  // Game timer
+  // Game timer (pause when paused)
   useEffect(() => {
-    if (isActive && timeLeft > 0) {
+    if (isActive && timeLeft > 0 && !actualIsPaused) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -216,28 +295,37 @@ export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameC
         clearInterval(intervalRef.current)
       }
     }
-  }, [isActive, timeLeft, onGameEnd])
+  }, [isActive, timeLeft, actualIsPaused, onGameEnd])
 
-  // Target spawning
+  // Target spawning (pause when paused)
   useEffect(() => {
-    if (isActive) {
-      const spawnInterval = gameMode === 'speed' ? 1000 : 2000
+    if (isActive && !actualIsPaused) {
+      const spawnInterval = gameMode === 'speed' ? 800 : gameMode === 'precision' ? 2500 : 1500
+      const targetLifetime = gameMode === 'speed' ? 2500 : gameMode === 'precision' ? 5000 : 3500
       
       spawnIntervalRef.current = setInterval(() => {
-        const newTarget = {
+        const newTarget: Target = {
           id: Date.now().toString(),
           position: [
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.3) * 4,
-            (Math.random() - 0.5) * 20 + 10
-          ] as [number, number, number]
+            (Math.random() - 0.5) * (gameMode === 'precision' ? 8 : 12),
+            (Math.random() - 0.2) * (gameMode === 'tracking' ? 6 : 4),
+            (Math.random() - 0.5) * 18 + (gameMode === 'flick' ? 15 : 12)
+          ] as [number, number, number],
+          spawnTime: Date.now()
         }
         
         setTargets(prev => [...prev, newTarget])
         
+        // Auto-remove targets that aren't hit
         setTimeout(() => {
-          setTargets(prev => prev.filter(t => t.id !== newTarget.id))
-        }, 4000)
+          setTargets(prev => {
+            const stillExists = prev.find(t => t.id === newTarget.id)
+            if (stillExists) {
+              handleMiss(new THREE.Vector3(...newTarget.position)) // Count as miss if not hit
+            }
+            return prev.filter(t => t.id !== newTarget.id)
+          })
+        }, targetLifetime)
       }, spawnInterval)
     } else {
       if (spawnIntervalRef.current) {
@@ -250,18 +338,167 @@ export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameC
         clearInterval(spawnIntervalRef.current)
       }
     }
-  }, [isActive, gameMode])
+  }, [isActive, actualIsPaused, gameMode])
 
-  const handleTargetHit = (targetId: string) => {
+  const handleTargetHit = (targetId: string, accuracy: number, distance: number) => {
+    const target = targets.find(t => t.id === targetId)
+    if (!target) return
+
+    // Calculate reaction time
+    const reactionTime = Date.now() - target.spawnTime
+    setReactionTimes(prev => [...prev, reactionTime])
+
+    // Update stats
     setTargets(prev => prev.filter(t => t.id !== targetId))
-    setScore(prev => prev + 100)
+    setHits(prev => prev + 1)
+    
+    // Calculate score based on accuracy and reaction time
+    const baseScore = 100
+    const accuracyMultiplier = accuracy / 100
+    const speedBonus = Math.max(0, (2000 - reactionTime) / 2000) * 50
+    const finalScore = Math.round(baseScore * accuracyMultiplier + speedBonus)
+    
+    setScore(prev => prev + finalScore)
+
+    // Update accuracy
+    const totalShots = hits + misses + 1
+    setAccuracy(((hits + 1) / totalShots) * 100)
+
+    // Play hit sound based on accuracy
+    if (accuracy >= 95) {
+      playHitSound(accuracy, distance) // Perfect hit sound
+      triggerShake(2, 100) // Light screen shake for perfect hits
+    } else if (accuracy >= 85) {
+      playHitSound(accuracy, distance) // Good hit sound
+    } else {
+      playHitSound(accuracy, distance) // Normal hit sound
+    }
+
+    // Create hit effect
+    const targetPos = new THREE.Vector3(...target.position)
+    const hitEffect = createHitEffect(targetPos, accuracy)
+    setHitEffects(prev => [...prev, hitEffect])
+
+    // Update game store for XP calculation
+    hitTarget(targetId, { 
+      targetId, 
+      position: target.position,
+      accuracy: accuracy / 100, 
+      reactionTime,
+      timestamp: Date.now()
+    })
+
+    // Show XP gain notification
+    const xpGained = Math.round(finalScore / 10)
+    if (xpGained > 0) {
+      playXPGainSound(xpGained)
+    }
   }
+
+  const handleMiss = (position?: THREE.Vector3) => {
+    setMisses(prev => prev + 1)
+    const totalShots = hits + misses + 1
+    setAccuracy((hits / totalShots) * 100)
+    
+    playMissSound()
+    missTarget()
+
+    // Create miss effect if position provided
+    if (position) {
+      const missEffect = createMissEffect(position)
+      setHitEffects(prev => [...prev, missEffect])
+    }
+  }
+
+  // Handle effect completion
+  const handleEffectComplete = (effectId: string) => {
+    setHitEffects(prev => prev.filter(effect => effect.id !== effectId))
+  }
+
+  // Pause/Resume functions
+  const handlePause = () => {
+    setIsPaused(true)
+    setShowESCMenu(true)
+  }
+
+  const handleResume = () => {
+    setIsPaused(false)
+    setShowESCMenu(false)
+  }
+
+  const handleRestart = () => {
+    setTargets([])
+    setScore(0)
+    setTimeLeft(60)
+    setHits(0)
+    setMisses(0)
+    setReactionTimes([])
+    setAccuracy(100)
+    setHitEffects([])
+    setIsPaused(false)
+    setShowESCMenu(false)
+    gameStartTime.current = Date.now()
+  }
+
+  const handleExit = () => {
+    onGameEnd()
+  }
+
+  // Game start/end management
+  useEffect(() => {
+    if (isActive && timeLeft === 60) {
+      gameStartTime.current = Date.now()
+      startGame(gameMode as any, 'medium')
+    }
+  }, [isActive, startGame, gameMode])
+
+  // Game end - award XP
+  useEffect(() => {
+    if (timeLeft === 0 && isActive) {
+      const sessionDuration = (Date.now() - gameStartTime.current) / 1000
+      const avgReactionTime = reactionTimes.length > 0 
+        ? reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length 
+        : 1000
+
+      // Calculate XP based on performance
+      const performance = {
+        score,
+        accuracy,
+        reactionTime: avgReactionTime,
+        hits,
+        misses,
+        streak: 0, // We'll need to track this properly later
+        gameMode: gameMode as any,
+        difficulty: 'medium' as any,
+        duration: sessionDuration,
+        perfectShots: 0, // We'll need to track this properly later
+        consistency: Math.max(60, 100 - (Math.abs(accuracy - 85) * 2)) // Simple consistency calculation
+      }
+
+      const xpGained = calculateXPFromPerformance(performance)
+      if (xpGained > 0) {
+        const levelBefore = useLevelStore.getState().currentLevel
+        gainXP(xpGained, `${gameMode}_training`)
+        const levelAfter = useLevelStore.getState().currentLevel
+        
+        if (levelAfter > levelBefore) {
+          playLevelUpSound()
+        }
+      }
+
+      endGame()
+    }
+  }, [timeLeft, isActive, score, accuracy, reactionTimes, gameMode, gainXP, calculateXPFromPerformance, endGame, playLevelUpSound])
 
   // Reset game state when mode changes
   useEffect(() => {
     setTargets([])
     setScore(0)
     setTimeLeft(60)
+    setHits(0)
+    setMisses(0)
+    setReactionTimes([])
+    setAccuracy(100)
   }, [gameMode])
 
   return (
@@ -279,21 +516,25 @@ export function GameCanvas({ gameMode, isActive, onGameStart, onGameEnd }: GameC
         />
         
         <FPSCameraController isActive={isActive} />
-        <ShootingSystem isActive={isActive} onTargetHit={handleTargetHit} />
+        <ShootingSystem isActive={isActive} onTargetHit={(targetId) => handleTargetHit(targetId, 85, 1)} />
         
         {/* Lighting */}
         <ambientLight intensity={0.4} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         
-        {/* Targets */}
+        {/* Enhanced Targets */}
         {targets.map(target => (
-          <Target
+          <EnhancedTarget
             key={target.id}
             position={target.position}
             onHit={handleTargetHit}
             targetId={target.id}
+            gameMode={gameMode}
           />
         ))}
+
+        {/* Hit Effects */}
+        <HitEffects effects={hitEffects} onEffectComplete={handleEffectComplete} />
         
         {/* Environment */}
         <gridHelper args={[50, 50, '#333333', '#333333']} position={[0, 0, 0]} />

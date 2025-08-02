@@ -170,10 +170,10 @@ export const SensitivityTestPanel: React.FC = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-white mb-4">
+        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
           Sensitivity Tests
         </h2>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+        <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
           Complete these comprehensive tests to find your optimal sensitivity settings. 
           Each test evaluates different aspects of your aiming performance.
         </p>
@@ -218,7 +218,7 @@ export const SensitivityTestPanel: React.FC = () => {
       )}
 
       {/* Test Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {testTypes.map((test, index) => {
           const Icon = test.icon
           const isCompleted = currentSession.results.some(r => r.testType === test.id)
@@ -230,10 +230,10 @@ export const SensitivityTestPanel: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               className={`
-                relative group bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border transition-all duration-300
+                relative group bg-slate-800/30 backdrop-blur-sm rounded-xl p-5 sm:p-6 border transition-all duration-300 hover:shadow-lg
                 ${isCompleted 
-                  ? 'border-green-500/50 bg-green-500/5' 
-                  : 'border-slate-700/50 hover:border-slate-600/50'
+                  ? 'border-green-500/50 bg-green-500/5 shadow-green-500/10' 
+                  : 'border-slate-700/50 hover:border-slate-600/50 hover:bg-slate-800/40'
                 }
               `}
             >
@@ -268,10 +268,10 @@ export const SensitivityTestPanel: React.FC = () => {
               </div>
               
               {/* Test Info */}
-              <h3 className="text-xl font-bold text-white mb-2">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
                 {test.title}
               </h3>
-              <p className="text-slate-400 text-sm mb-4 leading-relaxed">
+              <p className="text-slate-400 text-sm sm:text-base mb-4 leading-relaxed">
                 {test.description}
               </p>
               
@@ -301,30 +301,39 @@ export const SensitivityTestPanel: React.FC = () => {
               </div>
               
               {/* Action Buttons */}
-              <div className="space-y-2">
+              <div className="space-y-3" role="group" aria-labelledby={`test-${test.id}-actions`}>
+                <span id={`test-${test.id}-actions`} className="sr-only">
+                  Actions for {test.title} test
+                </span>
                 <button
                   onClick={() => start3DTest(test.id)}
                   disabled={isTestActive || is3DMode}
+                  aria-label={`Start 3D ${test.title} test - ${test.description}`}
+                  aria-describedby={`test-${test.id}-status`}
                   className={`
-                    w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2
+                    w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800
                     ${isCompleted
-                      ? 'bg-green-600/20 text-green-400 border border-green-600/30 hover:bg-green-600/30'
-                      : `bg-gradient-to-r ${test.color} text-white hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`
+                      ? 'bg-green-600/20 text-green-400 border border-green-600/30 hover:bg-green-600/30 focus:ring-green-500'
+                      : `bg-gradient-to-r ${test.color} text-white hover:shadow-lg transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus:ring-orange-500`
                     }
                     ${isTestActive || is3DMode ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                 >
-                  <FaPlay className="text-sm" />
+                  <FaPlay className="text-sm" aria-hidden="true" />
                   <span>🎯 Start 3D Test</span>
                 </button>
                 
                 <button
                   onClick={() => handleStartTest(test.id)}
                   disabled={isTestActive || is3DMode}
-                  className="w-full py-2 px-4 rounded-lg text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={`Start 2D ${test.title} test (legacy version)`}
+                  className="w-full py-2.5 px-4 rounded-lg text-sm bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600/50 hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800"
                 >
                   📊 2D Test (Legacy)
                 </button>
+                <span id={`test-${test.id}-status`} className="sr-only">
+                  {isCompleted ? 'Test completed' : 'Test not started'}
+                </span>
               </div>
             </motion.div>
           )
@@ -338,12 +347,13 @@ export const SensitivityTestPanel: React.FC = () => {
         transition={{ delay: 0.5 }}
         className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50"
       >
-        <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-        <div className="flex flex-wrap gap-4">
+        <h3 className="text-lg font-semibold text-white mb-4" id="quick-actions-heading">Quick Actions</h3>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4" role="group" aria-labelledby="quick-actions-heading">
           <button
             onClick={() => startNewSession(['flick', 'tracking'])}
             disabled={isTestActive}
-            className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold rounded-lg hover:from-orange-500 hover:to-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Start quick sensitivity test with flick shots and tracking exercises"
+            className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold rounded-lg hover:from-orange-500 hover:to-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02]"
           >
             Quick Test (Flick + Tracking)
           </button>
@@ -351,7 +361,8 @@ export const SensitivityTestPanel: React.FC = () => {
           <button
             onClick={() => startNewSession(['flick', 'tracking', 'target-switching', 'micro-correction'])}
             disabled={isTestActive}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-500 hover:to-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Start complete sensitivity assessment with all four test types"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-500 hover:to-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02]"
           >
             Complete Assessment
           </button>
@@ -359,7 +370,8 @@ export const SensitivityTestPanel: React.FC = () => {
           {testProgress.totalTests > 0 && (
             <button
               onClick={() => setActivePanel('settings')}
-              className="px-6 py-3 bg-slate-700 text-slate-300 font-semibold rounded-lg hover:bg-slate-600 hover:text-white transition-all duration-200"
+              aria-label="Open test customization settings"
+              className="px-6 py-3 bg-slate-700/50 border border-slate-600/50 text-slate-300 font-semibold rounded-lg hover:bg-slate-600/50 hover:border-slate-500/50 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02]"
             >
               Customize Tests
             </button>

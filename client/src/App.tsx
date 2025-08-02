@@ -9,15 +9,17 @@ import { LoginForm } from '@/components/auth/LoginForm'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { AuthSelector } from '@/components/auth/AuthSelector'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
-import { PartyLobby } from '@/components/party/PartyLobby'
+import { XPDemoPage } from '@/pages/XPDemoPage'
+import { TrainingHubPage } from '@/pages/TrainingHubPage'
+
 import { CompetitionMatchmaking } from '@/components/competition/CompetitionMatchmaking'
-import { TournamentBrowser } from '@/components/tournament/TournamentBrowser'
-import { SensitivityFinder } from './components/sensitivity/SensitivityFinder'
+
+
 
 // Phase 8 Features
 import { PerformanceAnalytics } from '@/components/analytics/PerformanceAnalytics'
 import { AdaptiveTraining } from '@/components/training/AdaptiveTraining'
-import { CoachingSystem } from '@/components/coaching/CoachingSystem'
+
 import { HardwareOptimization } from '@/components/hardware/HardwareOptimization'
 import { ReplaySystem } from '@/components/replay/ReplaySystem'
 import { TrainingGuilds } from '@/components/community/TrainingGuilds'
@@ -41,19 +43,21 @@ function App() {
         {/* Main App Routes - With Layout */}
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
-          <Route path="game" element={<GamePage />} />
+          <Route path="train" element={<GamePage />} />
+          <Route path="training-hub" element={<TrainingHubPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+                      <Route path="profile" element={<ProfilePage />} />
+            <Route path="xp-demo" element={<XPDemoPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="party" element={<PartyLobby />} />
+
           <Route path="competition" element={<CompetitionMatchmaking />} />
-          <Route path="tournaments" element={<TournamentBrowser />} />
-          <Route path="sensitivity" element={<SensitivityFinder />} />
+
+
           
           {/* Phase 8 Advanced Features */}
           <Route path="analytics" element={<PerformanceAnalytics />} />
           <Route path="adaptive-training" element={<AdaptiveTraining />} />
-          <Route path="coaching" element={<CoachingSystem />} />
+
           <Route path="hardware" element={<HardwareOptimization />} />
           <Route path="replay" element={<ReplaySystem />} />
           <Route path="guilds" element={<TrainingGuilds />} />

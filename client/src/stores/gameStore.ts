@@ -1,8 +1,14 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { useLevelStore, type GamePerformance } from './levelStore'
 import type { GameState, GameMode, Difficulty, Target, HitResult } from '../../../shared/types'
 
 interface GameStoreState extends GameState {
+  // Game session tracking
+  gameStartTime: number | null
+  perfectShots: number
+  consistencyScores: number[]
+  
   // Actions
   startGame: (gameMode: GameMode, difficulty: Difficulty) => void
   endGame: () => void
@@ -24,6 +30,10 @@ interface GameStoreState extends GameState {
   
   // Settings
   updateSettings: (settings: Partial<GameState['settings']>) => void
+  
+  // Level integration
+  calculateGamePerformance: () => GamePerformance | null
+  awardXP: () => void
 }
 
 export const useGameStore = create<GameStoreState>()(
@@ -36,6 +46,9 @@ export const useGameStore = create<GameStoreState>()(
     currentScore: 0,
     targets: [],
     timeLeft: 0,
+    gameStartTime: null,
+    perfectShots: 0,
+    consistencyScores: [],
     stats: {
       hits: 0,
       misses: 0,
@@ -75,10 +88,18 @@ export const useGameStore = create<GameStoreState>()(
     },
 
     endGame: () => {
+      const state = get()
+      
+      // Award XP before resetting state
+      if (state.isActive) {
+        state.awardXP()
+      }
+      
       set({
         isActive: false,
         isPaused: false,
         targets: [],
+        gameStartTime: null,
       })
     },
 
@@ -109,8 +130,17 @@ export const useGameStore = create<GameStoreState>()(
       const newTotal = newHits + state.stats.misses
       const newStreak = state.stats.currentStreak + 1
       
+      // Track perfect shots (reaction time < 200ms and high accuracy)
+      const isPerfect = hitResult.reactionTime < 200 && hitResult.accuracy > 0.9
+      const newPerfectShots = isPerfect ? state.perfectShots + 1 : state.perfectShots
+      
+      // Track consistency (add current reaction time to scores)
+      const newConsistencyScores = [...state.consistencyScores, hitResult.reactionTime].slice(-10) // Keep last 10
+      
       set({
         targets: state.targets.filter((t) => t.id !== targetId),
+        perfectShots: newPerfectShots,
+        consistencyScores: newConsistencyScores,
         stats: {
           ...state.stats,
           hits: newHits,
@@ -161,8 +191,67 @@ export const useGameStore = create<GameStoreState>()(
         settings: state.settings ? { ...state.settings, ...newSettings } : null,
       }))
     },
+
+    // Level integration
+    calculateGamePerformance: (): GamePerformance | null => {
+      const state = get()
+      
+      if (!state.settings || !state.gameStartTime) return null
+      
+      const duration = (Date.now() - state.gameStartTime) / 1000 // seconds
+      const totalShots = state.stats.hits + state.stats.misses
+      
+      // Calculate consistency score (lower standard deviation = higher consistency)
+      const consistency = state.consistencyScores.length > 1 
+        ? 100 - Math.min(100, (calculateStandardDeviation(state.consistencyScores) / 10))
+        : 80 // Default for too few shots
+      
+      return {
+        score: state.currentScore,
+        accuracy: state.stats.accuracy,
+        reactionTime: state.stats.averageReactionTime,
+        hits: state.stats.hits,
+        misses: state.stats.misses,
+        streak: state.stats.bestStreak,
+        gameMode: state.settings.gameMode,
+        difficulty: state.settings.difficulty,
+        duration,
+        perfectShots: state.perfectShots,
+        consistency: Math.max(0, Math.min(100, consistency))
+      }
+    },
+
+    awardXP: () => {
+      const state = get()
+      const performance = state.calculateGamePerformance()
+      
+      if (!performance) return
+      
+      const levelStore = useLevelStore.getState()
+      const xpAmount = levelStore.calculateXPFromPerformance(performance)
+      
+      // Determine XP source based on performance
+      let source = 'Game Completed'
+      if (performance.accuracy >= 95) source = 'Perfect Accuracy!'
+      else if (performance.streak >= 10) source = 'Epic Streak!'
+      else if (performance.perfectShots >= 5) source = 'Perfect Shots!'
+      
+      // Award XP
+      levelStore.gainXP(xpAmount, source, performance.gameMode)
+    },
   }))
 )
+
+// Helper function for consistency calculation
+function calculateStandardDeviation(values: number[]): number {
+  if (values.length === 0) return 0
+  
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const squaredDifferences = values.map(value => Math.pow(value - mean, 2))
+  const variance = squaredDifferences.reduce((sum, squaredDiff) => sum + squaredDiff, 0) / values.length
+  
+  return Math.sqrt(variance)
+}
 
 // Subscribe to game end when time runs out
 useGameStore.subscribe(

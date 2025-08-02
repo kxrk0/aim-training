@@ -307,70 +307,70 @@ export const FlickTest: React.FC<FlickTestProps> = ({ config }) => {
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Header */}
-      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <FaBullseye className="text-2xl text-red-500" />
+      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 p-3 sm:p-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <FaBullseye className="text-xl sm:text-2xl text-red-500 flex-shrink-0" />
             <div>
-              <h2 className="text-xl font-bold text-white">Flick Shots Test</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-lg sm:text-xl font-bold text-white">Flick Shots Test</h2>
+              <p className="text-xs sm:text-sm text-slate-400">
                 Click targets as quickly and accurately as possible
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-6 w-full lg:w-auto">
             {/* Stats */}
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="text-center">
-                <div className="text-white font-bold text-lg">{Math.ceil(timeLeft)}</div>
-                <div className="text-slate-400">Time</div>
+            <div className="grid grid-cols-5 lg:flex lg:items-center gap-3 lg:gap-4 text-sm w-full lg:w-auto">
+              <div className="text-center bg-slate-700/50 rounded-lg p-2">
+                <div className="text-white font-bold text-base lg:text-lg">{Math.ceil(timeLeft)}</div>
+                <div className="text-slate-400 text-xs">Time</div>
               </div>
-              <div className="text-center">
-                <div className="text-green-400 font-bold text-lg">{hits}</div>
-                <div className="text-slate-400">Hits</div>
+              <div className="text-center bg-slate-700/50 rounded-lg p-2">
+                <div className="text-green-400 font-bold text-base lg:text-lg">{hits}</div>
+                <div className="text-slate-400 text-xs">Hits</div>
               </div>
-              <div className="text-center">
-                <div className="text-red-400 font-bold text-lg">{misses}</div>
-                <div className="text-slate-400">Misses</div>
+              <div className="text-center bg-slate-700/50 rounded-lg p-2">
+                <div className="text-red-400 font-bold text-base lg:text-lg">{misses}</div>
+                <div className="text-slate-400 text-xs">Misses</div>
               </div>
-              <div className="text-center">
-                <div className="text-orange-400 font-bold text-lg">{currentStreak}</div>
-                <div className="text-slate-400">Streak</div>
+              <div className="text-center bg-slate-700/50 rounded-lg p-2">
+                <div className="text-orange-400 font-bold text-base lg:text-lg">{currentStreak}</div>
+                <div className="text-slate-400 text-xs">Streak</div>
               </div>
-              <div className="text-center">
-                <div className="text-blue-400 font-bold text-lg">
+              <div className="text-center bg-slate-700/50 rounded-lg p-2">
+                <div className="text-blue-400 font-bold text-base lg:text-lg">
                   {hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0}%
                 </div>
-                <div className="text-slate-400">Accuracy</div>
+                <div className="text-slate-400 text-xs">Accuracy</div>
               </div>
             </div>
             
             {/* Controls */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-center lg:justify-start">
               {!isStarted ? (
                 <button
                   onClick={startTest}
-                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-500 hover:to-teal-500 transition-all duration-200"
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-500 hover:to-teal-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02] flex items-center space-x-2"
                 >
-                  <FaPlay className="inline mr-2" />
-                  Start Test
+                  <FaPlay className="text-sm" />
+                  <span>Start Test</span>
                 </button>
               ) : (
                 <>
                   <button
                     onClick={togglePause}
-                    className="px-4 py-2 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-500 transition-all duration-200"
+                    className="px-4 py-2 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02] flex items-center space-x-2"
                   >
-                    {isPaused ? <FaPlay className="inline mr-2" /> : <FaPause className="inline mr-2" />}
-                    {isPaused ? 'Resume' : 'Pause'}
+                    {isPaused ? <FaPlay className="text-sm" /> : <FaPause className="text-sm" />}
+                    <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
                   </button>
                   <button
                     onClick={handleStopTest}
-                    className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-all duration-200"
+                    className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform hover:scale-[1.02] flex items-center space-x-2"
                   >
-                    <FaTimes className="inline mr-2" />
-                    Stop
+                    <FaTimes className="text-sm" />
+                    <span className="hidden sm:inline">Stop</span>
                   </button>
                 </>
               )}
@@ -388,7 +388,7 @@ export const FlickTest: React.FC<FlickTestProps> = ({ config }) => {
           className="absolute inset-0 w-full h-full cursor-none bg-slate-900/50"
           onClick={handleCanvasClick}
           onMouseMove={handleMouseMove}
-          style={{ cursor: 'none' }}
+          style={{ cursor: 'none', imageRendering: 'pixelated' }}
         />
         
         {/* Targets */}

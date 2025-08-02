@@ -21,7 +21,9 @@ export default {
         }
       },
       fontFamily: {
-        gaming: ['Orbitron', 'monospace'],
+        'sans': ['Montserrat', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        'gaming': ['Montserrat', 'sans-serif'],
+        'display': ['Montserrat', 'sans-serif'],
       },
       animation: {
         'target-spawn': 'target-spawn 0.3s ease-out',
