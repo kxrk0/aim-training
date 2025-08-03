@@ -43,60 +43,158 @@ function getMimeType(filename) {
   return mimeTypes[ext] || 'application/octet-stream'
 }
 
-// Configure auto-updater
+// Configure auto-updater (Silent mode)
 autoUpdater.autoDownload = true
-autoUpdater.autoInstallOnAppQuit = true
-autoUpdater.checkForUpdatesAndNotify()
+autoUpdater.autoInstallOnAppQuit = false // We handle install manually
+autoUpdater.logger = null // Disable notifications
+
+// Update check state
+let updateCheckTimeout
+let isUpdateCheckComplete = false
+let hasNetworkError = false
+
+// Network connectivity check
+async function checkNetworkConnectivity() {
+  try {
+    const https = require('https')
+    return new Promise((resolve) => {
+      const req = https.request({
+        hostname: 'api.github.com',
+        port: 443,
+        path: '/repos/kxrk0/aim-training/releases/latest',
+        method: 'HEAD',
+        timeout: 5000
+      }, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 400)
+      })
+      
+      req.on('error', () => resolve(false))
+      req.on('timeout', () => {
+        req.destroy()
+        resolve(false)
+      })
+      req.end()
+    })
+  } catch (error) {
+    return false
+  }
+}
+
+// Handle update check completion
+function handleUpdateCheckComplete(reason, error = null) {
+  if (isUpdateCheckComplete) return
+  
+  isUpdateCheckComplete = true
+  if (updateCheckTimeout) {
+    clearTimeout(updateCheckTimeout)
+    updateCheckTimeout = null
+  }
+  
+  let statusMessage = 'Starting application...'
+  let delay = 1500
+  
+  switch (reason) {
+    case 'timeout':
+      statusMessage = 'Update check timeout - Starting app...'
+      delay = 2000
+      console.log('Auto-updater: Update check timeout')
+      break
+    case 'network-error':
+      statusMessage = 'No internet connection - Starting app...'
+      delay = 2000
+      console.log('Auto-updater: Network error')
+      break
+    case 'error':
+      statusMessage = 'Update check failed - Starting app...'
+      delay = 2000
+      console.error('Auto-updater error:', error)
+      break
+    case 'no-update':
+      statusMessage = 'App is up to date - Starting...'
+      delay = 1000
+      console.log('Auto-updater: No updates available')
+      break
+    default:
+      console.log('Auto-updater: Unknown completion reason:', reason)
+  }
+  
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('status-update', statusMessage)
+    
+    setTimeout(() => {
+      if (!mainWindow) {
+        console.log('Creating main window after update check:', reason)
+        createWindow()
+      }
+    }, delay)
+  }
+}
 
 // Auto-updater events
 autoUpdater.on('checking-for-update', () => {
-  console.log('Checking for update...')
+  console.log('Auto-updater: Checking for updates...')
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('status-update', 'Checking for updates...')
+  }
+  
+  // Set timeout for update check (15 seconds)
+  updateCheckTimeout = setTimeout(() => {
+    if (!isUpdateCheckComplete) {
+      handleUpdateCheckComplete('timeout')
+    }
+  }, 15000)
 })
 
 autoUpdater.on('update-available', (info) => {
-  console.log('Update available.')
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Available',
-    message: 'A new version is available. It will be downloaded in the background.',
-    detail: `Version ${info.version} is now available. The application will restart to apply the update when ready.`,
-    buttons: ['OK']
-  })
+  console.log('Auto-updater: Update available -', info.version)
+  isUpdateCheckComplete = true
+  if (updateCheckTimeout) {
+    clearTimeout(updateCheckTimeout)
+    updateCheckTimeout = null
+  }
+  
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('status-update', `Update found: v${info.version} - Downloading...`)
+  }
 })
 
-autoUpdater.on('update-not-available', (info) => {
-  console.log('Update not available.')
+autoUpdater.on('update-not-available', () => {
+  handleUpdateCheckComplete('no-update')
 })
 
-autoUpdater.on('error', (err) => {
-  console.log('Error in auto-updater. ' + err)
+autoUpdater.on('error', (error) => {
+  console.error('Auto-updater error:', error)
+  
+  // Check if it's a network-related error
+  const errorMessage = error.toString().toLowerCase()
+  if (errorMessage.includes('net::') || errorMessage.includes('network') || errorMessage.includes('timeout')) {
+    hasNetworkError = true
+    handleUpdateCheckComplete('network-error', error)
+  } else {
+    handleUpdateCheckComplete('error', error)
+  }
 })
 
 autoUpdater.on('download-progress', (progressObj) => {
-  let log_message = "Download speed: " + progressObj.bytesPerSecond
-  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%'
-  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')'
-  console.log(log_message)
+  const percent = Math.round(progressObj.percent)
+  console.log(`Auto-updater: Download progress ${percent}%`)
   
-  // Update splash screen with progress if it exists
   if (splashWindow && !splashWindow.isDestroyed()) {
     splashWindow.webContents.send('download-progress', progressObj)
   }
 })
 
 autoUpdater.on('update-downloaded', (info) => {
-  console.log('Update downloaded')
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Ready',
-    message: 'Update downloaded successfully.',
-    detail: 'The application will restart to apply the update.',
-    buttons: ['Restart Now', 'Later']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall()
-    }
-  })
+  console.log('Auto-updater: Update downloaded -', info.version)
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('update-ready')
+  }
+  
+  // Install update after 3 seconds
+  setTimeout(() => {
+    console.log('Auto-updater: Installing update and restarting...')
+    autoUpdater.quitAndInstall()
+  }, 3000)
 })
 
 // Enable live reload for Electron in development
@@ -160,7 +258,7 @@ function createSplashWindow() {
         body {
           margin: 0;
           padding: 0;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #0a0a0a;
           color: white;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           display: flex;
@@ -171,42 +269,126 @@ function createSplashWindow() {
           border-radius: 10px;
         }
         .logo {
-          font-size: 24px;
-          font-weight: bold;
-          margin-bottom: 20px;
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 25px;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          padding: 12px 20px;
+          letter-spacing: 3px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
         .progress {
-          width: 200px;
-          height: 4px;
-          background: rgba(255,255,255,0.3);
-          border-radius: 2px;
+          width: 220px;
+          height: 6px;
+          background: rgba(255,255,255,0.1);
+          border-radius: 6px;
           overflow: hidden;
+          backdrop-filter: blur(5px);
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
         .progress-bar {
           height: 100%;
-          background: white;
+          background: linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 100%);
           width: 0%;
-          transition: width 0.3s ease;
+          transition: width 0.4s ease;
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(255,255,255,0.2);
         }
         .text {
-          margin-top: 10px;
-          font-size: 12px;
-          opacity: 0.8;
+          margin-top: 15px;
+          font-size: 11px;
+          opacity: 0.7;
+          font-weight: 400;
+          letter-spacing: 0.5px;
+        }
+        .spinner {
+          width: 24px;
+          height: 24px;
+          border: 2px solid rgba(255,255,255,0.2);
+          border-top: 2px solid rgba(255,255,255,0.8);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 15px auto;
+          box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       </style>
     </head>
     <body>
-      <div class="logo">AIM TRAINER PRO</div>
-      <div class="progress">
+      <div class="logo">A.T.P</div>
+      <div class="spinner" id="spinner"></div>
+      <div class="progress" id="progress-container" style="display: none;">
         <div class="progress-bar" id="progress-bar"></div>
       </div>
-      <div class="text" id="status">Starting...</div>
+      <div class="text" id="status">Checking for updates...</div>
       <script>
         const { ipcRenderer } = require('electron')
-        ipcRenderer.on('download-progress', (event, progress) => {
-          document.getElementById('progress-bar').style.width = progress.percent + '%'
-          document.getElementById('status').textContent = 'Downloading update: ' + Math.round(progress.percent) + '%'
+        
+        // Track status updates
+        let lastStatus = ''
+        let statusTimeout = null
+        
+        // Update status messages with improved handling
+        ipcRenderer.on('status-update', (event, message) => {
+          lastStatus = message
+          document.getElementById('status').textContent = message
+          
+          // Clear any existing timeout
+          if (statusTimeout) {
+            clearTimeout(statusTimeout)
+          }
+          
+          // Auto-hide spinner for certain messages
+          if (message.includes('Starting') || message.includes('timeout') || message.includes('failed')) {
+            statusTimeout = setTimeout(() => {
+              document.getElementById('spinner').style.display = 'none'
+            }, 1000)
+          }
         })
+        
+        // Show download progress with enhanced UI
+        ipcRenderer.on('download-progress', (event, progress) => {
+          document.getElementById('spinner').style.display = 'none'
+          document.getElementById('progress-container').style.display = 'block'
+          document.getElementById('progress-bar').style.width = progress.percent + '%'
+          
+          const percent = Math.round(progress.percent)
+          const speed = (progress.bytesPerSecond / (1024 * 1024)).toFixed(1) // MB/s
+          document.getElementById('status').textContent = 'Downloading update: ' + percent + '% (' + speed + ' MB/s)'
+        })
+        
+        // Update completed with countdown
+        ipcRenderer.on('update-ready', (event) => {
+          document.getElementById('status').textContent = 'Update ready - Restarting in 3s...'
+          document.getElementById('spinner').style.display = 'none'
+          document.getElementById('progress-container').style.display = 'none'
+          
+          let countdown = 3
+          const countdownInterval = setInterval(() => {
+            countdown--
+                         if (countdown > 0) {
+               document.getElementById('status').textContent = 'Update ready - Restarting in ' + countdown + 's...'
+             } else {
+              document.getElementById('status').textContent = 'Restarting...'
+              clearInterval(countdownInterval)
+            }
+          }, 1000)
+        })
+        
+        // Fallback timeout - if splash screen is stuck for too long
+        setTimeout(() => {
+          if (lastStatus.includes('Checking') || lastStatus === '') {
+            document.getElementById('status').textContent = 'Starting application...'
+            document.getElementById('spinner').style.display = 'none'
+          }
+        }, 20000) // 20 second fallback
       </script>
     </body>
     </html>
@@ -388,17 +570,7 @@ function createWindow() {
         mainWindow.webContents.openDevTools()
       }
 
-          // Check for updates after window is shown (production only)
-    if (!isDev) {
-      setTimeout(() => {
-        autoUpdater.checkForUpdatesAndNotify()
-      }, 3000)
-      
-      // Set up periodic update checks (every 4 hours)
-      setInterval(() => {
-        autoUpdater.checkForUpdatesAndNotify()
-      }, 4 * 60 * 60 * 1000)
-    }
+          // Auto-updater check is now done during startup in splash screen
     }, 1000)
   })
 
@@ -712,24 +884,54 @@ function startBackendServer() {
 
 // No custom protocol needed - use Firebase web flow
 
+// Robust update check with network connectivity
+async function initiateUpdateCheck() {
+  try {
+    // First check network connectivity
+    console.log('Auto-updater: Checking network connectivity...')
+    const hasNetwork = await checkNetworkConnectivity()
+    
+    if (!hasNetwork) {
+      console.log('Auto-updater: No network connection detected')
+      handleUpdateCheckComplete('network-error')
+      return
+    }
+    
+    console.log('Auto-updater: Network OK, checking for updates...')
+    
+    // Start update check with additional safety
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (updateError) {
+      console.error('Auto-updater: Update check failed:', updateError)
+      handleUpdateCheckComplete('error', updateError)
+    }
+  } catch (error) {
+    console.error('Auto-updater: Network check failed:', error)
+    handleUpdateCheckComplete('error', error)
+  }
+}
+
 // App event handlers
 app.whenReady().then(async () => {
-  // Create splash screen
+  // Create splash screen for production
   if (!isDev) {
     createSplashWindow()
-  }
-
-  // VPS Backend kullanıyoruz - local server başlatma gerekmiyor
-  // startBackendServer()
-  
-  // Create main window - No HTTP server needed
-  setTimeout(() => {
+    
+    // Start update check after a brief delay to let splash screen render
+    setTimeout(() => {
+      initiateUpdateCheck()
+    }, 800)
+  } else {
+    // Development mode - create window immediately
     createWindow()
-  }, isDev ? 0 : 500)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      if (isDev || isUpdateCheckComplete) {
+        createWindow()
+      }
     }
   })
 })
