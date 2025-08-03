@@ -37,7 +37,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  authProvider: 'backend' | 'firebase' | null
+  authProvider: 'backend' | 'firebase' | 'guest' | null
 }
 
 interface AuthActions {
@@ -59,6 +59,9 @@ interface AuthActions {
   
   // Firebase specific
   syncFirebaseUser: (firebaseUser: FirebaseUser | null) => Promise<void>
+  
+  // Guest mode (for Electron)
+  enableGuestMode: () => void
 }
 
 export type AuthStore = AuthState & AuthActions
@@ -305,6 +308,31 @@ export const useAuthStore = create<AuthStore>()(
               isAuthenticated: false 
             })
           }
+        },
+
+        // Guest mode for Electron (bypass authentication)
+        enableGuestMode: () => {
+          console.log('🎯 Enabling guest mode for Electron')
+          const guestId = `guest_${Date.now()}`
+          set({ 
+            authProvider: 'guest',
+            firebaseUser: null,
+            isAuthenticated: true,
+            user: { 
+              id: guestId, 
+              email: 'guest@aimtrainer.com', 
+              username: `Guest_${guestId.slice(-6)}`,
+              displayName: `Guest Player`,
+              level: 1,
+              totalScore: 0,
+              totalShots: 0, 
+              totalHits: 0, 
+              hoursPlayed: 0,
+              provider: 'guest'
+            },
+            token: null,
+            error: null
+          })
         }
       }),
       {

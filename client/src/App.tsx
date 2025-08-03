@@ -35,10 +35,28 @@ import { CustomTraining } from '@/components/training/CustomTraining'
 import { SocialFeatures } from '@/components/social/SocialFeatures'
 
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
+import { useAuthStore } from '@/stores/authStore'
+import { useEffect } from 'react'
 
 function App() {
   // Initialize Firebase authentication state monitoring
   useFirebaseAuth()
+  
+  const { enableGuestMode, isAuthenticated } = useAuthStore()
+  
+  // Auto-enable guest mode for Electron
+  useEffect(() => {
+    const isElectron = window.location.protocol === 'file:' || 
+                     window.location.origin === 'file://' || 
+                     window.location.hostname === '' || 
+                     (typeof window !== 'undefined' && (window as any).electronAPI)
+    
+    if (isElectron && !isAuthenticated) {
+      console.log('🖥️ Electron detected - enabling guest mode')
+      enableGuestMode()
+    }
+  }, [enableGuestMode, isAuthenticated])
+  
   return (
     <Router>
       <Routes>
