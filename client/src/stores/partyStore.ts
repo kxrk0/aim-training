@@ -88,10 +88,15 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       console.log('🎫 Firebase token for socket:', !!token, token?.substring(0, 20) + '...')
     }
     
-    // Require valid token for connection
-    if (!token) {
+    // Check if guest mode or valid token for connection
+    const { authProvider } = useAuthStore.getState()
+    if (!token && authProvider !== 'guest') {
       console.error('❌ Firebase token required for party system')
       return
+    }
+    
+    if (authProvider === 'guest') {
+      console.log('👤 Guest mode detected - proceeding without Firebase token')
     }
 
     // Dynamic WebSocket URL based on current host
@@ -180,9 +185,13 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       })
     }
 
-    // Add auth token - REQUIRED for party system
-    socketConfig.auth = { token }
-    console.log('🔐 Adding auth token to socket connection (required)')
+    // Add auth token - Only if not guest mode
+    if (token) {
+      socketConfig.auth = { token }
+      console.log('🔐 Adding auth token to socket connection (Firebase user)')
+    } else {
+      console.log('👤 Guest mode - no auth token required')
+    }
 
     const newSocket = io(wsUrl, socketConfig)
 
