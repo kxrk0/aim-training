@@ -77,7 +77,7 @@ npm install --production
 
 # Build server
 print_status "Building server..."
-npm run build
+npm run build:prod || npm run build
 cd ..
 
 # Stop existing PM2 process (if running)

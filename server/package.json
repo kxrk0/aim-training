@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && tsc-alias",
+    "build:prod": "NODE_ENV=production tsc --skipLibCheck --noImplicitAny false && tsc-alias",
     "start": "node dist/index.js",
     "start:prod": "NODE_ENV=production node dist/index.js",
     "lint": "eslint src --ext .ts",
@@ -40,7 +41,9 @@
     "passport-steam": "^1.0.18",
     "prisma": "^5.7.1",
     "redis": "^4.6.11",
-    "socket.io": "^4.7.4"
+    "socket.io": "^4.7.4",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.3.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -54,9 +57,7 @@
     "eslint": "^8.54.0",
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.1",
-    "tsc-alias": "^1.8.16",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.3.2"
+    "tsconfig-paths": "^4.2.0"
   },
   "keywords": [
     "aim-trainer",
