@@ -283,7 +283,7 @@ export interface CompetitionPlayerResult {
 // 🆕 TOURNAMENT SYSTEM TYPES
 export type TournamentFormat = 'single-elimination' | 'double-elimination' | 'round-robin' | 'swiss'
 export type TournamentStatus = 'registration' | 'starting' | 'active' | 'finished' | 'cancelled'
-export type BracketMatchStatus = 'pending' | 'active' | 'finished'
+export type BracketMatchStatus = 'pending' | 'active' | 'finished' | 'waiting'
 
 export interface Tournament {
   id: string
@@ -347,15 +347,23 @@ export interface TournamentBracket {
 
 export interface BracketMatch {
   id: string
+  tournamentId?: string
   round: number
   position: number
   player1?: TournamentParticipant
   player2?: TournamentParticipant
+  participant1Id?: string
+  participant2Id?: string
   status: BracketMatchStatus
+  
+  // Match configuration
+  bestOf?: number
+  bracket?: 'winners' | 'losers' | 'grand-finals'
   
   // If active/finished
   competitionId?: string
   winner?: string
+  winnerId?: string
   scores?: {
     player1Games: number
     player2Games: number
@@ -365,6 +373,8 @@ export interface BracketMatch {
   scheduledTime?: string
   startTime?: string
   endTime?: string
+  completedAt?: string
+  createdAt?: string
 }
 
 export interface MatchGame {
@@ -863,4 +873,330 @@ export interface SensitivityAnalytics {
   nextRecommendedTest: SensitivityTestType
   
   generatedAt: string
+} 
+
+export interface PartySpectator {
+  userId: string
+  username: string
+  joinedAt: string
+  isOnline: boolean
+  cameraMode: 'free' | 'follow-player' | 'overview'
+  followingPlayerId?: string
+}
+
+export interface SpectatorSession {
+  id: string
+  partyId: string
+  spectators: PartySpectator[]
+  createdAt: string
+  settings: {
+    allowSpectators: boolean
+    maxSpectators: number
+    spectatorChat: boolean
+    spectatorDelay: number // in seconds
+  }
+}
+
+export interface SpectatorGameUpdate {
+  type: 'player-hit' | 'player-miss' | 'target-spawn' | 'target-destroy' | 'score-update' | 'player-position'
+  playerId: string
+  data: any
+  timestamp: number
+}
+
+export interface SpectatorCameraUpdate {
+  spectatorId: string
+  cameraMode: 'free' | 'follow-player' | 'overview'
+  followingPlayerId?: string
+  position?: [number, number, number]
+  rotation?: [number, number, number]
+} 
+
+export interface PartyTeam {
+  id: string
+  name: string
+  color: string
+  leaderId: string
+  memberIds: string[]
+  score: number
+  objectives: TeamObjective[]
+  createdAt: string
+}
+
+export interface TeamObjective {
+  id: string
+  type: 'elimination' | 'accuracy' | 'time-trial' | 'survival' | 'capture-targets' | 'relay'
+  name: string
+  description: string
+  target: number
+  progress: number
+  isCompleted: boolean
+  reward: {
+    xp: number
+    points: number
+  }
+  timeLimit?: number // in seconds
+  startedAt?: string
+  completedAt?: string
+}
+
+export interface TeamChallenge {
+  id: string
+  partyId: string
+  type: 'team-vs-team' | 'team-objectives' | 'team-relay' | 'team-survival'
+  name: string
+  description: string
+  teams: PartyTeam[]
+  objectives: TeamObjective[]
+  settings: {
+    maxTeams: number
+    minPlayersPerTeam: number
+    maxPlayersPerTeam: number
+    duration: number // in seconds
+    gameMode: string
+    difficulty: string
+    allowTeamSwitching: boolean
+    autoBalance: boolean
+  }
+  status: 'setup' | 'countdown' | 'active' | 'completed' | 'cancelled'
+  startTime?: string
+  endTime?: string
+  winnerId?: string // team id
+  results?: TeamChallengeResult[]
+  createdAt: string
+}
+
+export interface TeamChallengeResult {
+  teamId: string
+  teamName: string
+  finalScore: number
+  objectivesCompleted: number
+  totalObjectives: number
+  members: Array<{
+    userId: string
+    username: string
+    individualScore: number
+    accuracy: number
+    hits: number
+    misses: number
+    averageReactionTime: number
+  }>
+  placement: number // 1st, 2nd, 3rd place
+  rewards: {
+    xp: number
+    points: number
+    achievements?: string[]
+  }
+}
+
+export interface TeamFormation {
+  method: 'manual' | 'random' | 'skill-based' | 'captain-pick'
+  captains?: string[] // user ids
+  teams: Array<{
+    name: string
+    color: string
+    memberIds: string[]
+  }>
+}
+
+export interface TeamChatMessage {
+  id: string
+  teamId: string
+  userId: string
+  username: string
+  message: string
+  timestamp: string
+  type: 'team' | 'system'
+}
+
+export interface TeamUpdateEvent {
+  type: 'team-formed' | 'member-added' | 'member-removed' | 'objective-completed' | 'score-updated' | 'challenge-completed'
+  teamId: string
+  data: any
+  timestamp: string
+}
+
+// 🆕 SKILL DIVISION SYSTEM TYPES
+export type DivisionTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'master'
+
+export interface Division {
+  tier: DivisionTier
+  name: string
+  description: string
+  icon: string
+  color: string
+  gradientColor: string
+  minMMR: number
+  maxMMR: number
+  promotionRequirement: {
+    winsRequired: number
+    streakRequired?: number
+    minAccuracy?: number
+  }
+  demotionThreshold: {
+    maxLosses: number
+    streak?: number
+  }
+  rewards: {
+    seasonEndRewards: {
+      xp: number
+      points: number
+      cosmetics?: string[]
+      titles?: string[]
+    }
+    monthlyRewards: {
+      xp: number
+      points: number
+    }
+  }
+  privileges: {
+    exclusiveTournaments: boolean
+    priorityMatchmaking: boolean
+    customCosmetics: boolean
+    advancedAnalytics: boolean
+  }
+}
+
+export interface UserDivisionStatus {
+  userId: string
+  currentDivision: DivisionTier
+  currentMMR: number
+  divisionMMR: number // MMR within current division (0-100)
+  promotionProgress: {
+    winsNeeded: number
+    currentWins: number
+    currentStreak: number
+    isInPromotion: boolean
+  }
+  demotionShield: {
+    isActive: boolean
+    gamesRemaining: number
+  }
+  seasonStats: {
+    highestDivision: DivisionTier
+    gamesPlayed: number
+    winRate: number
+    averageAccuracy: number
+    averageReactionTime: number
+    currentStreak: number
+    longestWinStreak: number
+    longestLossStreak: number
+  }
+  history: DivisionHistoryEntry[]
+  lastUpdated: string
+}
+
+export interface DivisionHistoryEntry {
+  id: string
+  fromDivision: DivisionTier
+  toDivision: DivisionTier
+  type: 'promotion' | 'demotion' | 'season-reset'
+  reason: string
+  mmrChange: number
+  timestamp: string
+  gameMode: GameMode
+}
+
+export interface DivisionMatchmaking {
+  divisionTier: DivisionTier
+  gameMode: GameMode
+  mmrRange: {
+    min: number
+    max: number
+  }
+  searchPreferences: {
+    allowCrossDivision: boolean
+    maxMMRDifference: number
+    prioritizeSimilarSkill: boolean
+  }
+}
+
+export interface DivisionLeaderboard {
+  divisionTier: DivisionTier
+  gameMode: GameMode
+  season: string
+  entries: DivisionLeaderboardEntry[]
+  lastUpdated: string
+}
+
+export interface DivisionLeaderboardEntry {
+  rank: number
+  userId: string
+  username: string
+  mmr: number
+  gamesPlayed: number
+  winRate: number
+  averageAccuracy: number
+  averageReactionTime: number
+  currentStreak: number
+  isPromotion: boolean
+  isDemotion: boolean
+}
+
+export interface SkillAssessment {
+  userId: string
+  gameMode: GameMode
+  overallSkillRating: number
+  skillBreakdown: {
+    accuracy: number
+    speed: number
+    consistency: number
+    clutchPerformance: number
+    improvement: number
+  }
+  performanceFactors: {
+    recentWinRate: number
+    averageScore: number
+    averageAccuracy: number
+    averageReactionTime: number
+    streakBonus: number
+    opponentQuality: number
+  }
+  recommendedDivision: DivisionTier
+  confidence: number // 0-100, how confident the system is
+  lastAssessed: string
+}
+
+export interface DivisionTournament extends Tournament {
+  divisionRestriction: DivisionTier[]
+  minMMRRequirement?: number
+  maxMMRRequirement?: number
+  isRanked: boolean
+  mmrRewards: {
+    winner: number
+    runnerUp: number
+    semifinalist: number
+    quarterfinalist: number
+  }
+}
+
+export interface SeasonReset {
+  seasonId: string
+  resetDate: string
+  resetType: 'soft' | 'hard'
+  mmrAdjustment: {
+    reductionPercentage: number
+    minimumMMR: number
+    divisionCap: DivisionTier
+  }
+  compensationRewards: {
+    xp: number
+    points: number
+    placementMatches: number
+  }
+}
+
+// Division Store State
+export interface DivisionState {
+  currentDivision: UserDivisionStatus | null
+  allDivisions: Division[]
+  divisionLeaderboards: Record<DivisionTier, DivisionLeaderboard>
+  skillAssessment: SkillAssessment | null
+  isInPlacementMatches: boolean
+  placementMatchesRemaining: number
+  seasonInfo: {
+    currentSeason: string
+    seasonEndDate: string
+    nextResetDate: string
+  }
 } 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCompetitionStore } from '@/stores/competitionStore'
+import { DivisionDashboard } from './DivisionDashboard'
 import type { GameMode } from '../../../../shared/types'
 
 export function CompetitionMatchmaking() {
@@ -21,6 +22,7 @@ export function CompetitionMatchmaking() {
   const [selectedRankRange, setSelectedRankRange] = useState('similar')
   const [searchTime, setSearchTime] = useState(0)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [activeTab, setActiveTab] = useState<'matchmaking' | 'divisions'>('matchmaking')
 
   // Mouse tracking and search timer
   useEffect(() => {
@@ -446,8 +448,43 @@ export function CompetitionMatchmaking() {
           </p>
         </motion.div>
 
+        {/* Tab Navigation */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-2 border border-gray-700">
+            <button
+              onClick={() => setActiveTab('matchmaking')}
+              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                activeTab === 'matchmaking'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              ⚔️ Matchmaking
+            </button>
+            <button
+              onClick={() => setActiveTab('divisions')}
+              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                activeTab === 'divisions'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              👑 Divisions
+            </button>
+          </div>
+        </div>
+
         <AnimatePresence mode="wait">
-          {!isSearching ? (
+          {activeTab === 'divisions' ? (
+            <motion.div
+              key="divisions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <DivisionDashboard />
+            </motion.div>
+          ) : !isSearching ? (
             <motion.div
               key="mode-selection"
               initial={{ opacity: 0 }}

@@ -1,55 +1,136 @@
 {
-  "name": "aim-training-3d",
+  "name": "aim-trainer-desktop",
   "version": "1.0.0",
-  "description": "Modern web-based FPS aim trainer with multiplayer capabilities",
-  "main": "index.js",
+  "description": "Professional FPS Aim Training Desktop Application",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "private": true,
+  "author": {
+    "name": "AIM TRAINER PRO Team",
+    "email": "contact@aimtrainer.pro",
+    "url": "https://aimtrainer.pro"
+  },
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "cd client && npm run dev",
-    "dev:server": "cd server && npm run dev",
-    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "start": "cd server && npm run start",
-    "lint": "npm run lint:client && npm run lint:server",
-    "lint:client": "cd client && npm run lint",
-    "lint:server": "cd server && npm run lint",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
-    "clean": "rimraf client/dist server/dist client/node_modules server/node_modules node_modules",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f",
-    "db:push": "cd server && npx prisma db push",
-    "db:studio": "cd server && npx prisma studio",
-    "db:generate": "cd server && npx prisma generate",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "client:dev": "cd client && npm run dev",
+    "server:dev": "cd server && npm run dev",
+    "build": "npm run client:build && npm run server:build",
+    "client:build": "cd client && npm run build",
+    "server:build": "cd server && npm run build",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm run client:dev\" \"npm run server:dev\" \"wait-on http://localhost:3000 http://localhost:3001 && electron .\"",
+    "electron:pack": "npm run build && electron-builder",
+    "electron:dist": "npm run build && electron-builder --publish=never",
+    "electron:publish": "npm run build && electron-builder --publish=always",
+    "postinstall": "electron-builder install-app-deps",
+    "clean": "rimraf dist-electron && rimraf client/dist && rimraf server/dist",
+    "rebuild": "npm run clean && npm run build && npm run electron:pack"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "rimraf": "^5.0.5"
+    "electron": "29.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-is-dev": "^3.0.1",
+    "electron-reload": "^2.0.0-alpha.1",
+    "wait-on": "^8.0.1",
+    "rimraf": "^6.0.1"
   },
-  "workspaces": [
-    "client",
-    "server"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/aim-trainer-3d.git"
-  },
-  "keywords": [
-    "aim-trainer",
-    "fps",
-    "gaming",
-    "react",
-    "three.js",
-    "multiplayer",
-    "websocket"
-  ],
-  "author": "AIM TRAINER PRO Team",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+  "build": {
+    "appId": "com.aimtrainer.desktop",
+    "productName": "AIM TRAINER PRO",
+    "electronVersion": "29.0.0",
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
+    "directories": {
+      "output": "dist-electron-debug"
+    },
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*",
+      "server/dist/**/*",
+      "node_modules/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "server/dist",
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "publisherName": "AIM TRAINER PRO Team",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": false,
+      "signDlls": false,
+      "verifyUpdateCodeSignature": false,
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "your-github-username",
+          "repo": "aim-training"
+        }
+      ]
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.games",
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "AIM TRAINER PRO",
+      "deleteAppDataOnUninstall": true,
+      "runAfterFinish": true,
+      "menuCategory": "Games",
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "warningsAsErrors": false,
+      "displayLanguageSelector": false,
+      "differentialPackage": false
+    },
+    "compression": "maximum",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "your-github-username",
+        "repo": "aim-training"
+      }
+    ],
+    "forceCodeSigning": false,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
+    "buildVersion": "1.0.0"
   }
-} 
+}

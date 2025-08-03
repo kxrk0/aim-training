@@ -4,20 +4,28 @@ import { HomePage } from '@/pages/HomePage'
 import { GamePage } from '@/pages/GamePage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { AchievementsPage } from '@/pages/AchievementsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { AdvancedFlickTraining } from '@/components/training/AdvancedFlickTraining'
+import { AIPredictionTraining } from '@/components/training/AIPredictionTraining'
+import { SpectatorViewer } from '@/components/spectator/SpectatorViewer'
+import { PartyLobby } from '@/components/party/PartyLobby'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { AuthSelector } from '@/components/auth/AuthSelector'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { XPDemoPage } from '@/pages/XPDemoPage'
 import { TrainingHubPage } from '@/pages/TrainingHubPage'
+import TournamentPage from '@/pages/TournamentPage'
+import SeasonPage from '@/pages/SeasonPage'
+import { PartyGamePage } from '@/pages/PartyGamePage'
 
 import { CompetitionMatchmaking } from '@/components/competition/CompetitionMatchmaking'
 
 
 
 // Phase 8 Features
-import { PerformanceAnalytics } from '@/components/analytics/PerformanceAnalytics'
+import AnalyticsPage from '@/pages/AnalyticsPage'
 import { AdaptiveTraining } from '@/components/training/AdaptiveTraining'
 
 import { HardwareOptimization } from '@/components/hardware/HardwareOptimization'
@@ -46,16 +54,24 @@ function App() {
           <Route path="train" element={<GamePage />} />
           <Route path="training-hub" element={<TrainingHubPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
-                      <Route path="profile" element={<ProfilePage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="advanced-flick-training" element={<AdvancedFlickTraining />} />
+          <Route path="ai-prediction-training" element={<AIPredictionTraining />} />
+          <Route path="party" element={<PartyLobby />} />
+          <Route path="party/:inviteCode" element={<PartyLobby />} />
+          <Route path="party-game/:partyId" element={<PartyGamePage />} />
+          <Route path="spectate/:partyId" element={<SpectatorViewer partyId="" onExit={() => {}} />} />
+          <Route path="profile" element={<ProfilePage />} />
             <Route path="xp-demo" element={<XPDemoPage />} />
           <Route path="settings" element={<SettingsPage />} />
 
           <Route path="competition" element={<CompetitionMatchmaking />} />
-
+          <Route path="tournaments" element={<TournamentPage />} />
+          <Route path="seasons" element={<SeasonPage />} />
 
           
           {/* Phase 8 Advanced Features */}
-          <Route path="analytics" element={<PerformanceAnalytics />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="adaptive-training" element={<AdaptiveTraining />} />
 
           <Route path="hardware" element={<HardwareOptimization />} />

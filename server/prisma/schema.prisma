@@ -32,10 +32,12 @@ model User {
   updatedAt   DateTime @updatedAt
   
   // Relations
-  gameSessions    GameSession[]
-  scores          Score[]
-  achievements    UserAchievement[]
-  leaderboard     Leaderboard[]
+  gameSessions       GameSession[]
+  scores            Score[]
+  achievements      UserAchievement[]
+  rewards           UserReward[]
+  prestige          UserPrestige?
+  leaderboard       Leaderboard[]
   sensitivityProfile SensitivityProfile?
   
   @@map("users")
@@ -72,16 +74,42 @@ model Score {
   @@map("scores")
 }
 
+// 🏆 ENHANCED ACHIEVEMENT SYSTEM
 model Achievement {
   id          String @id @default(cuid())
   name        String @unique
   description String
   icon        String
-  requirement String // JSON string describing requirement
-  points      Int    @default(0)
   
-  users UserAchievement[]
+  // Achievement Configuration
+  category    String   // 'training', 'accuracy', 'streak', 'competition', 'social', 'progression', 'special'
+  type        String   // 'single', 'progressive', 'cumulative', 'streak', 'challenge'
+  difficulty  String   // 'bronze', 'silver', 'gold', 'platinum', 'diamond'
   
+  // Requirements (JSON for flexibility)
+  requirement String   // JSON describing requirement criteria
+  maxProgress Int      @default(1)    // For progressive achievements
+  
+  // Rewards
+  xpReward    Int      @default(0)
+  pointReward Int      @default(0)
+  
+  // Achievement Status
+  isActive    Boolean  @default(true)
+  isHidden    Boolean  @default(false)  // Hidden until requirements are met
+  isSeasonal  Boolean  @default(false)  // Seasonal achievements
+  seasonId    String?  // Which season this belongs to
+  
+  // Unlock Requirements
+  requiresAchievement String?  // ID of achievement required to unlock this
+  minimumLevel       Int      @default(1)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAchievements UserAchievement[]
+  rewardUnlocks    RewardUnlock[]
+
   @@map("achievements")
 }
 
@@ -89,13 +117,130 @@ model UserAchievement {
   id            String   @id @default(cuid())
   userId        String
   achievementId String
-  unlockedAt    DateTime @default(now())
   
+  // Progress Tracking
+  currentProgress Int      @default(0)
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+  
+  // Tracking Data
+  progressData    String?  // JSON for storing progress details
+  startedAt       DateTime @default(now())
+  lastUpdated     DateTime @updatedAt
+
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, achievementId])
   @@map("user_achievements")
+}
+
+// 🎁 REWARD SYSTEM
+model Reward {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  type        String   // 'crosshair', 'theme', 'title', 'badge', 'emote'
+  category    String   // 'cosmetic', 'functional', 'prestige'
+  rarity      String   // 'common', 'rare', 'epic', 'legendary', 'mythic'
+  
+  // Reward Data (JSON for different reward types)
+  rewardData  String   // JSON containing reward-specific data
+  previewUrl  String?  // URL for preview image
+  
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  achievements RewardUnlock[]
+  userRewards  UserReward[]
+
+  @@map("rewards")
+}
+
+model RewardUnlock {
+  id            String @id @default(cuid())
+  achievementId String
+  rewardId      String
+  isAutomatic   Boolean @default(true)  // Auto-unlock on achievement completion
+
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  reward      Reward      @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@unique([achievementId, rewardId])
+  @@map("reward_unlocks")
+}
+
+model UserReward {
+  id         String   @id @default(cuid())
+  userId     String
+  rewardId   String
+  unlockedAt DateTime @default(now())
+  isEquipped Boolean  @default(false)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rewardId])
+  @@map("user_rewards")
+}
+
+// 👑 PRESTIGE SYSTEM
+model PrestigeLevel {
+  id          String @id @default(cuid())
+  level       Int    @unique
+  name        String
+  description String
+  icon        String
+  color       String   // Hex color for UI theming
+  
+  // Requirements
+  requiredLevel    Int
+  requiredXP       Int
+  requiredAchievements String? // JSON array of required achievement IDs
+  
+  // Rewards
+  prestigeRewards  String   // JSON array of prestige-specific rewards
+  
+  createdAt   DateTime @default(now())
+
+  users UserPrestige[]
+
+  @@map("prestige_levels")
+}
+
+model UserPrestige {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  currentPrestige Int      @default(0)
+  totalPrestigeXP Int      @default(0)
+  
+  prestigedAt     DateTime?
+  lastUpdated     DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prestigeLevel PrestigeLevel @relation(fields: [currentPrestige], references: [level])
+
+  @@map("user_prestige")
+}
+
+// 📅 SEASONAL SYSTEM
+model Season {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  
+  // Season Configuration
+  seasonNumber Int      @unique
+  themeColor   String   // Hex color for season theming
+  bannerUrl    String?  // Season banner image
+  
+  createdAt   DateTime @default(now())
+
+  @@map("seasons")
 }
 
 model Leaderboard {

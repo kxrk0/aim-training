@@ -31,12 +31,16 @@ passport.deserializeUser(async (id: string, done) => {
   }
 })
 
-// Google OAuth Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID || '',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback'
-}, async (accessToken, refreshToken, profile, done) => {
+// Google OAuth Strategy - only if credentials are provided
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+
+if (googleClientId && googleClientSecret) {
+  passport.use(new GoogleStrategy({
+    clientID: googleClientId,
+    clientSecret: googleClientSecret,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback'
+  }, async (accessToken, refreshToken, profile, done) => {
   try {
     logger.info(`Google OAuth attempt for: ${profile.emails?.[0]?.value}`)
 
@@ -85,7 +89,10 @@ passport.use(new GoogleStrategy({
     logger.error('Google OAuth error:', error)
     return done(error, undefined)
   }
-}))
+  }))
+} else {
+  logger.warn('Google OAuth credentials not found, skipping Google strategy')
+}
 
 // Steam OAuth Strategy
 passport.use(new SteamStrategy({

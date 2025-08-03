@@ -14,8 +14,25 @@ class ApiService {
   private api: AxiosInstance
   private baseURL: string
 
+  private getApiUrl(): string {
+    // Production VPS URL
+    if (window.location.protocol === 'file:') {
+      // Desktop app (Electron) - connect to VPS
+      return 'https://aim.liorabelleleather.com/api'
+    }
+    
+    if (window.location.hostname === 'myaimtrainer.loca.lt') {
+      return 'https://myaimtrainer.loca.lt/api'  // Use tunnel URL for API too
+    }
+    
+    // Development fallback
+    return (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api'
+  }
+
   constructor() {
-    this.baseURL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api'
+    // Dynamic API URL based on current host
+    this.baseURL = this.getApiUrl()
+    console.log('🌐 API URL:', this.baseURL)
     
     this.api = axios.create({
       baseURL: this.baseURL,
@@ -181,6 +198,23 @@ class ApiService {
 
   async clearSensitivityData(): Promise<AxiosResponse<any>> {
     return this.api.delete('/sensitivity/profile/clear')
+  }
+
+  // 🏆 Generic methods for new features
+  async get(url: string, config?: any): Promise<AxiosResponse<any>> {
+    return this.api.get(url, config)
+  }
+
+  async post(url: string, data?: any, config?: any): Promise<AxiosResponse<any>> {
+    return this.api.post(url, data, config)
+  }
+
+  async put(url: string, data?: any, config?: any): Promise<AxiosResponse<any>> {
+    return this.api.put(url, data, config)
+  }
+
+  async delete(url: string, config?: any): Promise<AxiosResponse<any>> {
+    return this.api.delete(url, config)
   }
 }
 

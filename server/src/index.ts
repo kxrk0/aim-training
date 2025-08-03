@@ -11,6 +11,7 @@ import passport from 'passport'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initializeDatabase, closeDatabase } from './config/database'
 import { initializeFirebaseAdmin } from './services/firebaseAdmin'
+import { socketFirebaseAuth } from './middleware/firebaseAuth'
 import { logger } from './utils/logger'
 import './config/passport' // Initialize passport strategies
 
@@ -20,10 +21,13 @@ import userRoutes from './routes/users'
 import gameRoutes from './routes/games'
 import leaderboardRoutes from './routes/leaderboards'
 import sensitivityRoutes from './routes/sensitivity'
+import achievementRoutes from './routes/achievements'
 
 // Socket events
-import { setupPartyEvents } from './sockets/partyEvents'
+import { setupPartyEvents, parties } from './sockets/partyEvents'
 import { setupCompetitionEvents } from './sockets/competitionEvents'
+import { setupSpectatorEvents, setPartiesReference } from './sockets/spectatorEvents'
+import { setupTeamChallengeEvents, setTeamPartiesReference } from './sockets/teamChallengeEvents'
 
 const app: Application = express()
 const httpServer = createServer(app)
@@ -31,11 +35,39 @@ const httpServer = createServer(app)
 // Socket.io setup
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:3000",
+      "http://localhost:3000",
+      "https://myaimtrainer.loca.lt",
+      /.*\.loca\.lt$/  // Allow all localtunnel subdomains
+    ],
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["*"]
+  },
+  allowEIO3: true,  // Support older clients
+  transports: ['polling', 'websocket'],  // Support both for localtunnel compatibility
+  // Enhanced options for localtunnel
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e6,
+  // Cookie configuration for localtunnel
+  cookie: {
+    name: 'io',
+    httpOnly: false,
+    path: '/',
+    sameSite: 'none',
+    secure: false
   }
 })
+
+console.log('🔌 Socket.io server initialized with POLLING + WEBSOCKET support')
+console.log('🌐 Localtunnel and localhost both supported')
+
+// Add simple socket middleware
+console.log('🔐 Setting up Firebase socket middleware...')
+io.use(socketFirebaseAuth)  // RE-ENABLE Firebase auth
 
 const PORT = process.env.PORT || 3001
 
@@ -66,7 +98,12 @@ app.use(helmet({
 }))
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: [
+    process.env.CLIENT_URL || "http://localhost:3000",
+    "http://localhost:3000",
+    "https://myaimtrainer.loca.lt",
+    /.*\.loca\.lt$/  // Allow all localtunnel subdomains
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -107,23 +144,56 @@ app.use('/api/users', userRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/leaderboards', leaderboardRoutes)
 app.use('/api/sensitivity', sensitivityRoutes)
+app.use('/api/achievements', achievementRoutes)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  logger.info(`Client connected: ${socket.id}`)
+  const userId = socket.data.userId
+  const username = socket.data.username
+  const isGuest = socket.data.isGuest || false
+  
+  console.log(`🔌 CLIENT CONNECTED:`, {
+    socketId: socket.id,
+    userId,
+    username,
+    isGuest,
+    transport: socket.conn.transport.name,
+    clientIP: socket.handshake.address
+  })
+
+  // Test event for connection verification
+  socket.on('test', (data) => {
+    console.log(`🧪 Test event received from ${username}:`, data)
+    socket.emit('test-response', { 
+      message: 'Party system is working!', 
+      userId, 
+      username, 
+      isGuest,
+      timestamp: new Date().toISOString()
+    })
+  })
 
   // Setup socket event handlers
+  console.log(`🎯 Setting up event handlers for ${username}...`)
   setupPartyEvents(io, socket)
   setupCompetitionEvents(io, socket)
+  setupSpectatorEvents(io, socket)
+  setupTeamChallengeEvents(io, socket)
+  console.log(`✅ Event handlers setup complete for ${username}`)
 
   // Handle client disconnect
   socket.on('disconnect', (reason) => {
-    logger.info(`Client disconnected: ${socket.id}, reason: ${reason}`)
+    console.log(`🔌 CLIENT DISCONNECTED:`, {
+      socketId: socket.id,
+      username,
+      reason,
+      transport: socket.conn.transport.name
+    })
   })
 
   // Handle errors
   socket.on('error', (error) => {
-    logger.error(`Socket error for ${socket.id}:`, error)
+    console.error(`❌ Socket error for ${username}:`, error)
   })
 })
 
@@ -134,6 +204,12 @@ app.use(errorHandler)
 // Start server
 const startServer = async (): Promise<void> => {
   try {
+    // Initialize spectator system with parties reference
+    setPartiesReference(parties)
+    
+    // Initialize team challenge system with parties reference
+    setTeamPartiesReference(parties)
+    
     // Initialize database
     await initializeDatabase()
     logger.info('Database initialized successfully')

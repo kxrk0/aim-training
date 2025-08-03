@@ -21,8 +21,10 @@ import {
   FaCheck,
   FaDownload,
   FaUpload,
-  FaCopy
+  FaCopy,
+  FaBrain
 } from 'react-icons/fa'
+import { DifficultyDashboard } from '@/components/ai/DifficultyDashboard'
 
 interface CrosshairSettings {
   color: string
@@ -77,6 +79,7 @@ export function SettingsPage() {
   const tabs = [
     { id: 'game', label: 'Game', icon: FaGamepad },
     { id: 'crosshair', label: 'Crosshair', icon: FaCrosshairs },
+    { id: 'ai', label: 'AI Coach', icon: FaBrain },
     { id: 'display', label: 'Display', icon: FaDesktop },
     { id: 'audio', label: 'Audio', icon: FaVolumeUp },
     { id: 'controls', label: 'Controls', icon: FaKeyboard }
@@ -499,6 +502,17 @@ export function SettingsPage() {
                       </div>
                     </motion.div>
                   </div>
+                )}
+
+                {/* AI Coach Settings */}
+                {activeTab === 'ai' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <DifficultyDashboard />
+                  </motion.div>
                 )}
 
                 {/* Crosshair Settings */}

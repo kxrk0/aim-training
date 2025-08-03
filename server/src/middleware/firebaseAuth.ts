@@ -99,3 +99,69 @@ export const optionalFirebaseAuth = async (
 
   next()
 } 
+
+/**
+ * Socket.io middleware for Firebase authentication - AUTHENTICATED USERS ONLY
+ */
+export const socketFirebaseAuth = async (socket: any, next: any) => {
+  try {
+    console.log('🔐 Socket auth middleware started for socket:', socket.id)
+    
+    const token = socket.handshake.auth?.token
+    console.log('🔍 Auth token present:', !!token)
+    
+    if (!token) {
+      console.error('❌ No Firebase token provided - authentication required')
+      return next(new Error('Authentication required. Please sign in with Google.'))
+    }
+
+    try {
+      console.log('🔐 Attempting Firebase token verification...')
+      
+      // Check if Firebase admin is initialized
+      if (!firebaseAdminService) {
+        console.error('❌ Firebase admin service not available')
+        return next(new Error('Firebase authentication service unavailable'))
+      }
+      
+      const decodedToken = await firebaseAdminService.verifyIdToken(token)
+      console.log('✅ Firebase token verified successfully')
+      console.log('👤 Firebase user data:', {
+        uid: decodedToken.uid,
+        name: decodedToken.name,
+        email: decodedToken.email,
+        picture: decodedToken.picture
+      })
+      
+      // Use the best available name (Google name preferred)
+      let displayName = 'Unknown User'
+      if (decodedToken.name) {
+        displayName = decodedToken.name
+      } else if (decodedToken.email) {
+        displayName = decodedToken.email.split('@')[0]
+      }
+      
+      socket.data.userId = decodedToken.uid
+      socket.data.username = displayName
+      socket.data.email = decodedToken.email
+      socket.data.picture = decodedToken.picture
+      socket.data.isGuest = false
+      
+      console.log('✅ Authenticated user setup completed:', {
+        userId: socket.data.userId,
+        username: socket.data.username,
+        email: socket.data.email,
+        isGuest: socket.data.isGuest
+      })
+      logger.info(`Authenticated user connected: ${socket.data.username} (${socket.data.userId})`)
+      next()
+    } catch (firebaseError: any) {
+      console.error('❌ Firebase token verification failed:', firebaseError.message || firebaseError)
+      return next(new Error('Invalid Firebase token. Please sign in again.'))
+    }
+  } catch (error: any) {
+    console.error('❌ Socket Firebase auth middleware error:', error)
+    logger.error('Socket Firebase auth middleware error:', error)
+    return next(new Error('Authentication error. Please try again.'))
+  }
+} 

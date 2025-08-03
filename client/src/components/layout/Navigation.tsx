@@ -1,17 +1,50 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
 import { useLevelStore } from '@/stores/levelStore'
 import { LevelProgress } from '@/components/ui/LevelProgress'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
-const navItems = [
-  { name: 'Home', path: '/', icon: '🏠' },
-  { name: 'Train', path: '/training-hub', icon: '🎯' },
-  { name: 'Competition', path: '/competition', icon: '⚔️' },
-  { name: 'Leaderboard', path: '/leaderboard', icon: '📊' },
-  { name: 'Profile', path: '/profile', icon: '👤' },
-]
+  // Organized navigation categories
+  const navigationCategories = {
+    core: {
+      name: 'Training',
+      icon: '🎯',
+      items: [
+        { name: 'Home', path: '/', icon: '🏠', description: 'Main dashboard' },
+        { name: 'Training Hub', path: '/training-hub', icon: '🎯', description: 'Practice modes' },
+      ]
+    },
+    competitive: {
+      name: 'Compete',
+      icon: '⚔️',
+      items: [
+        { name: '1v1 Battles', path: '/competition', icon: '⚔️', description: 'Head-to-head matches' },
+        { name: 'Tournaments', path: '/tournaments', icon: '🏆', description: 'Join competitions' },
+        { name: 'Seasons', path: '/seasons', icon: '👑', description: 'Season rankings' },
+      ]
+    },
+    social: {
+      name: 'Social',
+      icon: '👥',
+      items: [
+        { name: 'Party & Team Challenges', path: '/party', icon: '👥', description: 'Party lobby & team competitions' },
+        { name: 'Leaderboard', path: '/leaderboard', icon: '📊', description: 'Global rankings' },
+      ]
+    },
+    progress: {
+      name: 'Progress',
+      icon: '📈', 
+      items: [
+        { name: 'Analytics', path: '/analytics', icon: '🧠', description: 'AI-powered insights' },
+        { name: 'Achievements', path: '/achievements', icon: '🏅', description: 'Unlock rewards' },
+        { name: 'Profile', path: '/profile', icon: '👤', description: 'Your statistics' },
+      ]
+    }
+  }
+
+  // Quick access items (always visible) - removed redundant items
+  const quickAccessItems: any[] = []
 
 export function Navigation() {
   const location = useLocation()
@@ -19,10 +52,24 @@ export function Navigation() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const { currentLevel, getTitleForLevel, totalXP } = useLevelStore()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   
   // Calculate XP progress to next level
   const currentLevelXP = totalXP % 1000
   const xpProgress = (currentLevelXP / 1000) * 100
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -30,53 +77,207 @@ export function Navigation() {
   }
 
   return (
-    <nav className="bg-gray-900/95 backdrop-blur-sm border-b border-orange-500/20 sticky top-0 z-50">
+    <nav className="bg-black/90 backdrop-blur-md border-b border-orange-500/30 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo - Compact */}
-          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
-            <span className="text-xl">🎯</span>
-            <span className="hidden sm:block text-lg font-bold text-orange-400">
+          {/* Logo - More Left Aligned */}
+          <Link to="/" className="flex items-center space-x-3 flex-shrink-0 mr-8">
+            <span className="text-2xl">🎯</span>
+            <span className="hidden sm:block text-xl font-bold text-orange-400 tracking-wide">
               AIM TRAINER
             </span>
-            <span className="sm:hidden text-lg font-bold text-orange-400">
+            <span className="sm:hidden text-xl font-bold text-orange-400">
               AIM
             </span>
           </Link>
 
-          {/* Navigation Links - Responsive */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
+          {/* Modern Navigation - Categories with Dropdowns */}
+          <div className="hidden lg:flex items-center space-x-2" ref={dropdownRef}>
+            {/* Quick Access Items */}
+            {quickAccessItems.map((item) => {
               const isActive = location.pathname === item.path
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="relative group"
+                  className="relative"
                 >
                   <motion.div
-                    className={`flex items-center space-x-1 px-2 py-1.5 rounded-lg transition-colors text-sm ${
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all ${
                       isActive
-                        ? 'text-orange-400 bg-orange-400/10'
+                        ? 'text-orange-400 bg-orange-400/10 shadow-lg shadow-orange-400/20'
                         : 'text-gray-300 hover:text-orange-400 hover:bg-orange-400/5'
                     }`}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="text-sm">{item.icon}</span>
-                    <span className="font-medium hidden lg:block">{item.name}</span>
+                    <span className="text-base">{item.icon}</span>
+                    <span className="font-medium">{item.name}</span>
                   </motion.div>
-                  
-                  {isActive && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-400"
-                      layoutId="activeTab"
-                      initial={false}
-                    />
-                  )}
                 </Link>
               )
             })}
+
+            {/* Category Dropdowns */}
+            {Object.entries(navigationCategories).map(([key, category]) => (
+              <div key={key} className="relative">
+                <motion.button
+                  onClick={() => setActiveDropdown(activeDropdown === key ? null : key)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-xl transition-all ${
+                    activeDropdown === key
+                      ? 'text-blue-400 bg-blue-400/10'
+                      : 'text-gray-300 hover:text-blue-400 hover:bg-blue-400/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-base">{category.icon}</span>
+                  <span className="font-medium text-sm">{category.name}</span>
+                  <motion.span
+                    animate={{ rotate: activeDropdown === key ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-xs"
+                  >
+                    ▼
+                  </motion.span>
+                </motion.button>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                  {activeDropdown === key && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-0 mt-2 w-64 bg-black/95 backdrop-blur-md border border-gray-800/50 rounded-xl shadow-2xl shadow-orange-500/10 z-50"
+                    >
+                      <div className="p-2">
+                        {category.items.map((item) => {
+                          const isActive = location.pathname === item.path
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => setActiveDropdown(null)}
+                              className="block"
+                            >
+                              <motion.div
+                                className={`flex items-center space-x-3 p-3 rounded-lg transition-all ${
+                                  isActive
+                                    ? 'bg-orange-400/10 text-orange-400'
+                                    : 'hover:bg-gray-900/70 text-gray-300 hover:text-white'
+                                }`}
+                                whileHover={{ x: 4 }}
+                              >
+                                <span className="text-lg">{item.icon}</span>
+                                <div className="flex-1">
+                                  <div className="font-medium">{item.name}</div>
+                                  <div className="text-xs text-gray-400">{item.description}</div>
+                                </div>
+                                {isActive && (
+                                  <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                                )}
+                              </motion.div>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile Navigation - More Options */}
+          <div className="flex lg:hidden items-center space-x-2">
+            {quickAccessItems.map((item) => {
+              const isActive = location.pathname === item.path
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-all ${
+                    isActive
+                      ? 'text-orange-400 bg-orange-400/10'
+                      : 'text-gray-300 hover:text-orange-400'
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  <span className="text-sm font-medium hidden md:block">{item.name}</span>
+                </Link>
+              )
+            })}
+            
+            {/* Mobile More Menu */}
+            <div className="relative">
+              <motion.button
+                onClick={() => setActiveDropdown(activeDropdown === 'mobile' ? null : 'mobile')}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-all ${
+                  activeDropdown === 'mobile'
+                    ? 'text-blue-400 bg-blue-400/10'
+                    : 'text-gray-300 hover:text-blue-400'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="text-base">📱</span>
+                <span className="text-sm font-medium hidden md:block">More</span>
+              </motion.button>
+
+              {/* Mobile Dropdown */}
+              <AnimatePresence>
+                {activeDropdown === 'mobile' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                                         className="absolute top-full right-0 mt-2 w-64 bg-black/95 backdrop-blur-md border border-gray-800/50 rounded-xl shadow-2xl shadow-orange-500/10 z-50"
+                  >
+                    <div className="p-2">
+                      {Object.entries(navigationCategories).map(([key, category]) => (
+                        <div key={key} className="mb-3">
+                          <div className="px-3 py-1 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            {category.name}
+                          </div>
+                          {category.items.map((item) => {
+                            const isActive = location.pathname === item.path
+                            return (
+                              <Link
+                                key={item.path}
+                                to={item.path}
+                                onClick={() => setActiveDropdown(null)}
+                                className="block"
+                              >
+                                <motion.div
+                                  className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${
+                                    isActive
+                                      ? 'bg-orange-400/10 text-orange-400'
+                                      : 'hover:bg-gray-700/50 text-gray-300 hover:text-white'
+                                  }`}
+                                  whileHover={{ x: 2 }}
+                                >
+                                  <span className="text-sm">{item.icon}</span>
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">{item.name}</div>
+                                    <div className="text-xs text-gray-400">{item.description}</div>
+                                  </div>
+                                  {isActive && (
+                                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-full"></div>
+                                  )}
+                                </motion.div>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Right Side - User Actions */}
@@ -103,77 +304,94 @@ export function Navigation() {
                 <div className="relative">
                   <motion.button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-gray-800/50 transition-all duration-300 border border-gray-600/30 hover:border-gray-500/50"
-                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center space-x-2.5 px-2.5 py-1.5"
                     whileTap={{ scale: 0.98 }}
                   >
                     {/* Profile Photo - Sol taraf */}
                     <div className="relative flex-shrink-0">
                       {user.photoURL ? (
-                        <div className="relative w-10 h-10">
+                                                <div className="relative w-8 h-8">
                           <img 
                             src={user.photoURL} 
                             alt={user.username}
-                            className={`w-10 h-10 rounded-full shadow-lg object-cover border-2 ${
-                              currentLevel >= 20 ? 'border-yellow-400' : // Altın
-                              currentLevel >= 10 ? 'border-gray-300' :   // Gümüş  
-                              'border-orange-500'                        // Bronz
+                            className={`w-8 h-8 rounded-full shadow-md object-cover border-2 transition-all duration-300 ${
+                              currentLevel >= 20 ? 'border-yellow-400 shadow-yellow-400/20' : // Altın
+                              currentLevel >= 10 ? 'border-gray-300 shadow-gray-300/20' :   // Gümüş  
+                              'border-orange-500 shadow-orange-500/20'                        // Bronz
                             }`}
                             onError={(e) => {
                               const fallback = document.createElement('div')
-                              fallback.className = `w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-lg border-2 ${currentLevel >= 20 ? 'border-yellow-400' : currentLevel >= 10 ? 'border-gray-300' : 'border-orange-500'}`
-                              fallback.innerHTML = `<span class="text-white font-bold text-sm">${user.username.charAt(0).toUpperCase()}</span>`
+                                                                                            fallback.className = `w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-md border-2 ${currentLevel >= 20 ? 'border-yellow-400 shadow-yellow-400/20' : currentLevel >= 10 ? 'border-gray-300 shadow-gray-300/20' : 'border-orange-500 shadow-orange-500/20'}`
+                               fallback.innerHTML = `<span class="text-white font-bold text-xs">${user.username.charAt(0).toUpperCase()}</span>`
                               e.currentTarget.parentNode?.replaceChild(fallback, e.currentTarget)
                             }}
                           />
                         </div>
                       ) : (
-                        <div className={`w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-lg border-2 ${
-                          currentLevel >= 20 ? 'border-yellow-400' : 
-                          currentLevel >= 10 ? 'border-gray-300' : 
-                          'border-orange-500'
-                        }`}>
-                          <span className="text-white font-bold text-sm">
-                            {user.username.charAt(0).toUpperCase()}
-                          </span>
+                                                                          <div className={`w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-md border-2 transition-all duration-300 ${
+                           currentLevel >= 20 ? 'border-yellow-400 shadow-yellow-400/20' : 
+                           currentLevel >= 10 ? 'border-gray-300 shadow-gray-300/20' : 
+                           'border-orange-500 shadow-orange-500/20'
+                         }`}>
+                           <span className="text-white font-bold text-xs">
+                             {user.username.charAt(0).toUpperCase()}
+                           </span>
                         </div>
                       )}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900 flex items-center justify-center">
-                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                      </div>
+                                             <motion.div 
+                         className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-gray-900 flex items-center justify-center shadow-sm"
+                         animate={{ scale: [1, 1.1, 1] }}
+                         transition={{ duration: 2, repeat: Infinity }}
+                       >
+                         <div className="w-0.5 h-0.5 bg-white rounded-full"></div>
+                       </motion.div>
                     </div>
 
                     {/* User Info - Sağ taraf */}
-                    <div className="hidden sm:block text-left min-w-[140px]">
+                    <div className="hidden sm:block text-left min-w-[120px] space-y-0">
                       {/* Line 1: Username with Online Status */}
-                      <div className="flex items-center justify-start space-x-1.5 mb-0">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <h3 className="text-xs font-bold text-white truncate">
+                      <div className="flex items-center justify-start space-x-1 mb-0">
+                        <motion.div 
+                          className="w-1.5 h-1.5 bg-green-400 rounded-full"
+                          animate={{ opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                        <h3 className="text-[11px] font-bold text-white truncate tracking-wide">
                           {user.username}
                         </h3>
                       </div>
                       
                       {/* Line 2: Level Badge and NameTag */}
                       <div className="flex items-center justify-between space-x-1 mb-0">
-                        <span className="text-xs text-cyan-400 truncate">
+                        <span className="text-[10px] text-cyan-300 truncate font-medium">
                           ⚡ {getTitleForLevel(currentLevel)}
                         </span>
-                        <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-1.5 py-0 rounded-full border border-blue-400/30 shadow-lg flex-shrink-0">
+                        <motion.div 
+                          className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white text-[10px] font-bold px-1.5 py-0 rounded-full border border-blue-400/40 shadow-sm flex-shrink-0"
+                          whileHover={{ scale: 1.05 }}
+                          animate={{ 
+                            boxShadow: ["0 0 6px rgba(59, 130, 246, 0.2)", "0 0 12px rgba(147, 51, 234, 0.3)", "0 0 6px rgba(59, 130, 246, 0.2)"]
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
                           LVL {currentLevel}
-                        </div>
+                        </motion.div>
                       </div>
                       
-                      {/* Line 3: XP Progress Bar - Bigger */}
+                      {/* Line 3: XP Progress Bar */}
                       <div className="flex items-center space-x-1">
-                        <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden min-w-[90px]">
+                        <div className="flex-1 bg-gray-700/60 rounded-full h-1.5 overflow-hidden min-w-[75px] shadow-inner">
                           <motion.div
-                            className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+                            className="h-full bg-gradient-to-r from-orange-400 via-yellow-500 to-orange-600 rounded-full shadow-sm"
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.max(10, xpProgress)}%` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            style={{
+                              filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 0.3))'
+                            }}
                           />
                         </div>
-                        <span className="text-xs text-gray-400 font-medium flex-shrink-0">
+                        <span className="text-[10px] text-gray-300 font-semibold flex-shrink-0 min-w-[25px]">
                           {Math.round(xpProgress)}%
                         </span>
                       </div>
@@ -186,7 +404,7 @@ export function Navigation() {
                     <motion.div
                       initial={{ opacity: 0, y: -10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      className="absolute right-0 top-full mt-2 w-72 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-600/50 z-[100]"
+                      className="absolute right-0 top-full mt-2 w-72 bg-black/95 backdrop-blur-md rounded-xl shadow-2xl shadow-orange-500/10 border border-gray-800/50 z-[100]"
                     >
                       <div className="py-1">
                         {/* Main Actions */}

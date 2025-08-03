@@ -2,21 +2,45 @@ import * as admin from 'firebase-admin'
 import { logger } from '../utils/logger'
 
 // Initialize Firebase Admin SDK
-export const initializeFirebaseAdmin = () => {
+export function initializeFirebaseAdmin() {
   try {
-    // For production, you would use a service account key file
-    // For development, we'll use the project config
-    if (!admin.apps.length) {
+    console.log('🔥 Initializing Firebase Admin SDK...')
+    
+    // Check for required environment variables
+    const requiredEnvVars = ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL']
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+    
+    if (missingVars.length > 0) {
+      console.warn('⚠️  Missing Firebase environment variables:', missingVars)
+      console.warn('⚠️  Firebase features will be disabled, using guest mode only')
+      return
+    }
+
+    // Only initialize if not already initialized
+    if (admin.apps.length === 0) {
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+      
+      if (!privateKey) {
+        throw new Error('FIREBASE_PRIVATE_KEY is required')
+      }
+
       admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID || 'aimtraining-98ec3',
-        // In production, add your service account credentials here
-        // credential: admin.credential.cert(serviceAccount),
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: privateKey
+        }),
+        projectId: process.env.FIREBASE_PROJECT_ID
       })
-      logger.info('Firebase Admin SDK initialized successfully')
+      
+      console.log('✅ Firebase Admin SDK initialized successfully')
+    } else {
+      console.log('✅ Firebase Admin SDK already initialized')
     }
   } catch (error) {
-    logger.error('Failed to initialize Firebase Admin SDK:', error)
-    throw error
+    console.error('❌ Failed to initialize Firebase Admin SDK:', error)
+    console.warn('⚠️  Continuing without Firebase authentication, guest mode only')
+    // Don't throw the error, just log it and continue
   }
 }
 

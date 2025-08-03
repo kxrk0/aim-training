@@ -1,0 +1,12 @@
+{
+  "name": "aim-trainer-pro-electron",
+  "version": "1.0.0",
+  "description": "AIM TRAINER PRO Desktop Application",
+  "main": "main.js",
+  "dependencies": {
+    "electron-is-dev": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron-reload": "^2.0.0-alpha.1"
+  }
+} 

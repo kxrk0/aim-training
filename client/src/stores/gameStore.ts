@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { useLevelStore, type GamePerformance } from './levelStore'
+import { useDynamicDifficultyStore } from './dynamicDifficultyStore'
 import type { GameState, GameMode, Difficulty, Target, HitResult } from '../../../shared/types'
 
 interface GameStoreState extends GameState {
@@ -238,6 +239,12 @@ export const useGameStore = create<GameStoreState>()(
       
       // Award XP
       levelStore.gainXP(xpAmount, source, performance.gameMode)
+      
+      // Send performance to Dynamic Difficulty AI for analysis
+      const difficultyStore = useDynamicDifficultyStore.getState()
+      if (difficultyStore.isDynamicModeEnabled) {
+        difficultyStore.analyzePerformance(performance)
+      }
     },
   }))
 )

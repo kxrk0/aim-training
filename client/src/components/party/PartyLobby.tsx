@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useParams } from 'react-router-dom'
 import { usePartyStore } from '@/stores/partyStore'
 import { useAuthStore } from '@/stores/authStore'
-import type { PartyGameSettings, GameMode, PartyMember } from '../../../../shared/types'
+import { useTeamChallengeStore } from '@/stores/teamChallengeStore'
+import { TeamChallengeManager } from '@/components/team/TeamChallengeManager'
+import { FaUsers, FaCrown, FaFistRaised, FaGamepad } from 'react-icons/fa'
+import type { PartyMember, PartyGameSettings, GameMode } from '../../../../shared/types'
 
 export function PartyLobby() {
+  const { inviteCode: urlInviteCode } = useParams()
   const { 
     currentParty, 
     partyMembers, 
@@ -15,17 +20,23 @@ export function PartyLobby() {
     disconnect,
     createParty,
     joinParty,
+    joinPartyByCode,
     leaveParty, 
     toggleReady, 
     startGame 
   } = usePartyStore()
 
-  const { user } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
+  const { connect: connectTeamChallenge } = useTeamChallengeStore()
+  
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showJoinForm, setShowJoinForm] = useState(false)
+  const [showJoinByCodeForm, setShowJoinByCodeForm] = useState(false)
   const [newPartyName, setNewPartyName] = useState('')
   const [joinPartyId, setJoinPartyId] = useState('')
   const [joinInviteCode, setJoinInviteCode] = useState('')
+  const [partyCodeInput, setPartyCodeInput] = useState('')
+  const [activeTab, setActiveTab] = useState<'lobby' | 'team-challenges'>('lobby')
   
   const [gameSettings, setGameSettings] = useState<PartyGameSettings>({
     gameMode: 'precision',
@@ -41,9 +52,20 @@ export function PartyLobby() {
     }
   })
 
+  // Auto-join if invite code in URL
+  useEffect(() => {
+    if (urlInviteCode && !isInParty && isConnected && isAuthenticated) {
+      console.log('🎫 Auto-joining party with URL code:', urlInviteCode)
+      joinPartyByCode(urlInviteCode.toUpperCase())
+    }
+  }, [urlInviteCode, isInParty, isConnected, isAuthenticated, joinPartyByCode])
+
   // Connect to party system on component mount
   useEffect(() => {
+    console.log('🔍 PartyLobby: Checking connection status', { isConnected })
+    
     if (!isConnected) {
+      console.log('🔌 PartyLobby: Attempting to connect...')
       connect()
     }
     
@@ -52,8 +74,77 @@ export function PartyLobby() {
     }
   }, [isConnected, connect])
 
-  const currentUserId = user?.id || 'guest-user'
+  // Connect to team challenge store if authenticated and in party
+  useEffect(() => {
+    // Don't connect to team challenge store separately
+    // Team challenges will use party socket connection
+    console.log('✅ Team challenges will use party socket connection')
+  }, [isAuthenticated, isInParty])
+
+  // Debug info
+  useEffect(() => {
+    console.log('🏠 PartyLobby Debug Info:', {
+      isConnected,
+      isInParty,
+      currentParty: !!currentParty,
+      partyMembersCount: partyMembers.length,
+      user: !!user,
+      activeTab
+    })
+  }, [isConnected, isInParty, currentParty, partyMembers, user, activeTab])
+  
+  // Extract user ID from Firebase auth or fallback to guest
+  const getUserId = () => {
+    if (isAuthenticated && user) {
+      // Firebase user might have uid property
+      const firebaseUid = (user as any).uid || user.id || 'guest-user'
+      
+      // TEMPORARY FIX: If no matching party member found with Firebase UID,
+      // try to find a guest user that might belong to this session
+      const firebaseMember = partyMembers.find(m => m.userId === firebaseUid)
+      if (firebaseMember) {
+        return firebaseUid
+      }
+      
+      // If Firebase UID doesn't match, find a guest member (temporary fallback)
+      const guestMember = partyMembers.find(m => m.userId.startsWith('guest_'))
+      if (guestMember && partyMembers.length === 1) {
+        console.warn('🔄 TEMP FIX: Using guest member ID for Firebase user')
+        return guestMember.userId
+      }
+      
+      return firebaseUid
+    }
+    return 'guest-user'
+  }
+  
+  const currentUserId = getUserId()
+  console.log('🔍 Debug user info:', {
+    user,
+    isAuthenticated,
+    calculatedUserId: currentUserId,
+    partyMembersCount: partyMembers.length
+  })
+  
   const currentUser = partyMembers.find((m: PartyMember) => m.userId === currentUserId)
+  console.log('🔍 Current user in party:', currentUser)
+  console.log('🔍 Party members DETAILED:', partyMembers.map(m => ({ 
+    userId: m.userId, 
+    username: m.username,
+    userIdType: typeof m.userId,
+    userIdLength: m.userId?.length,
+    rawMember: m
+  })))
+  console.log('🔍 User ID comparison:')
+  partyMembers.forEach((member, index) => {
+    console.log(`  Member ${index}: "${member.userId}" === "${currentUserId}" ? ${member.userId === currentUserId}`)
+    console.log(`  Member ${index} types: ${typeof member.userId} vs ${typeof currentUserId}`)
+    console.log(`  Member ${index} lengths: ${member.userId.length} vs ${currentUserId.length}`)
+  })
+  console.log('🔍 Exact comparison test:')
+  console.log('  Frontend userID:', JSON.stringify(currentUserId))
+  console.log('  Backend userIDs:', partyMembers.map(m => JSON.stringify(m.userId)))
+  
   const isLeader = currentParty?.leaderId === currentUserId
   const allMembersReady = partyMembers.every((member: PartyMember) => member.isReady)
 
@@ -74,6 +165,14 @@ export function PartyLobby() {
     }
   }
 
+  const handleJoinByCode = () => {
+    if (partyCodeInput.trim()) {
+      joinPartyByCode(partyCodeInput.trim())
+      setPartyCodeInput('')
+      setShowJoinByCodeForm(false)
+    }
+  }
+
   const handleStartGame = () => {
     if (isLeader && allMembersReady) {
       startGame(gameSettings)
@@ -86,39 +185,8 @@ export function PartyLobby() {
     }
   }
 
-  // Show party lobby if in party
-  if (isInParty && currentParty) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black p-6">
-        <div className="container mx-auto max-w-6xl">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <h1 className="text-4xl font-bold text-emerald-400 mb-2">
-              🎉 {currentParty.name}
-            </h1>
-            <p className="text-gray-400">
-              Party Lobby • {partyMembers.length}/{currentParty.maxMembers} players
-            </p>
-            
-            {/* Invite Code */}
-            {inviteCode && (
-              <div className="mt-4 inline-flex items-center space-x-2 bg-gray-800 rounded-lg px-4 py-2">
-                <span className="text-sm text-gray-400">Invite Code:</span>
-                <code className="text-emerald-400 font-mono font-bold">{inviteCode}</code>
-                <button
-                  onClick={copyInviteCode}
-                  className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-500 transition-colors"
-                >
-                  Copy
-                </button>
-              </div>
-            )}
-          </motion.div>
-
+  // Render functions
+  const renderPartyLobbyContent = () => (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Party Members */}
             <motion.div
@@ -128,9 +196,10 @@ export function PartyLobby() {
             >
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
                 <h2 className="text-xl font-bold text-emerald-400 mb-4 flex items-center">
-                  👥 Party Members
+            <FaUsers className="mr-2" />
+            Party Members
                   <span className="ml-2 text-sm text-gray-400">
-                    ({partyMembers.length}/{currentParty.maxMembers})
+              ({partyMembers.length}/{currentParty?.maxMembers})
                   </span>
                 </h2>
                 
@@ -154,9 +223,7 @@ export function PartyLobby() {
                             <h3 className="font-semibold text-white flex items-center">
                               {member.username}
                               {member.role === 'leader' && (
-                                <span className="ml-2 text-xs bg-emerald-600 text-white px-2 py-1 rounded">
-                                  👑 Leader
-                                </span>
+                          <FaCrown className="ml-2 text-yellow-400" />
                               )}
                             </h3>
                             <p className="text-xs text-gray-400">
@@ -190,7 +257,21 @@ export function PartyLobby() {
                 <h3 className="text-lg font-semibold text-emerald-400 mb-4">Ready Status</h3>
                 
                 <motion.button
-                  onClick={() => currentUser && toggleReady(!currentUser.isReady)}
+            onClick={() => {
+              console.log('🔴 Ready button clicked!')
+              console.log('Current user:', currentUser)
+              console.log('Current ready status:', currentUser?.isReady)
+              
+              if (currentUser) {
+                const newReadyStatus = !currentUser.isReady
+                console.log('🔄 Toggling ready status to:', newReadyStatus)
+                toggleReady(newReadyStatus)
+              } else {
+                console.error('❌ currentUser is null!')
+                console.error('❌ Available party members:', partyMembers.map(m => ({userId: m.userId, username: m.username})))
+                console.error('❌ Calculated currentUserId:', currentUserId)
+              }
+            }}
                   className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
                     currentUser?.isReady
                       ? 'bg-emerald-600 text-white hover:bg-emerald-500'
@@ -224,7 +305,7 @@ export function PartyLobby() {
                       <label className="block text-sm font-medium mb-1">Game Mode</label>
                       <select
                         value={gameSettings.gameMode}
-                        onChange={(e) => setGameSettings((prev: any) => ({ 
+                  onChange={(e) => setGameSettings((prev) => ({ 
                           ...prev, 
                           gameMode: e.target.value as GameMode 
                         }))}
@@ -241,7 +322,7 @@ export function PartyLobby() {
                       <label className="block text-sm font-medium mb-1">Party Mode</label>
                       <select
                         value={gameSettings.partyMode}
-                        onChange={(e) => setGameSettings((prev: any) => ({ 
+                  onChange={(e) => setGameSettings((prev) => ({ 
                           ...prev, 
                           partyMode: e.target.value as any 
                         }))}
@@ -262,7 +343,7 @@ export function PartyLobby() {
                         min="30"
                         max="180"
                         value={gameSettings.duration}
-                        onChange={(e) => setGameSettings((prev: any) => ({ 
+                  onChange={(e) => setGameSettings((prev) => ({ 
                           ...prev, 
                           duration: parseInt(e.target.value) 
                         }))}
@@ -304,6 +385,158 @@ export function PartyLobby() {
               </div>
             </motion.div>
           </div>
+  )
+
+  const renderTeamChallengesContent = () => {
+    // Team challenges now use party socket - no separate connection needed
+    return (
+      <div className="space-y-6">
+        {/* Team Challenge Header */}
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+            ⚔️ Team Challenges
+          </h2>
+          <p className="text-gray-400 text-lg mb-6">
+            Organize your party into teams and compete in strategic challenges
+          </p>
+
+          {/* Quick Info */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-gray-800/30 rounded-lg p-4 text-center">
+              <div className="text-2xl mb-2">⚔️</div>
+              <h4 className="text-white font-semibold">Team vs Team</h4>
+              <p className="text-gray-400">Direct competition between teams</p>
+            </div>
+            <div className="bg-gray-800/30 rounded-lg p-4 text-center">
+              <div className="text-2xl mb-2">🎯</div>
+              <h4 className="text-white font-semibold">Team Objectives</h4>
+              <p className="text-gray-400">Complete challenges together</p>
+            </div>
+            <div className="bg-gray-800/30 rounded-lg p-4 text-center">
+              <div className="text-2xl mb-2">🔄</div>
+              <h4 className="text-white font-semibold">Team Relay</h4>
+              <p className="text-gray-400">Take turns in relay challenges</p>
+            </div>
+            <div className="bg-gray-800/30 rounded-lg p-4 text-center">
+              <div className="text-2xl mb-2">🛡️</div>
+              <h4 className="text-white font-semibold">Team Survival</h4>
+              <p className="text-gray-400">Last team standing wins</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Team Challenge Manager */}
+        <TeamChallengeManager 
+          partyId={currentParty?.id || ''} 
+          isLeader={isLeader}
+        />
+      </div>
+    )
+  }
+
+  // Show party lobby if in party
+  if (isInParty && currentParty) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black p-6">
+        <div className="container mx-auto max-w-6xl">
+          {/* Header with Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            {/* Party Info Header */}
+            <div className="text-center mb-6">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                🎯 {currentParty.name}
+              </h1>
+              <p className="text-gray-400 text-lg">
+                Party Lobby • {partyMembers.length}/{currentParty.maxMembers} players
+              </p>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-gray-800/50 rounded-lg p-1 flex space-x-1">
+                <button
+                  onClick={() => setActiveTab('lobby')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    activeTab === 'lobby'
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                >
+                  <FaGamepad className="inline mr-2" />
+                  Party Lobby
+                </button>
+                <button
+                  onClick={() => setActiveTab('team-challenges')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    activeTab === 'team-challenges'
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                >
+                  <FaFistRaised className="inline mr-2" />
+                  Team Challenges
+                </button>
+              </div>
+            </div>
+
+            {/* Party Invite Code - Always visible */}
+            {inviteCode && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 text-center mb-6"
+              >
+                <h3 className="text-lg font-semibold text-emerald-400 mb-4">Party Invite Code</h3>
+                <div className="flex items-center justify-center space-x-4">
+                  <code className="text-3xl font-bold text-white bg-gray-700 px-6 py-3 rounded-lg tracking-wider">
+                    {inviteCode}
+                  </code>
+                  <motion.button
+                    onClick={copyInviteCode}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    📋 Copy
+                  </motion.button>
+                </div>
+                <p className="text-gray-400 text-sm mt-2">
+                  Share this code with your friends to join your party!
+                </p>
+              </motion.div>
+            )}
+          </motion.div>
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            {activeTab === 'lobby' && (
+              <motion.div
+                key="lobby"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderPartyLobbyContent()}
+              </motion.div>
+            )}
+
+            {activeTab === 'team-challenges' && (
+              <motion.div
+                key="team-challenges"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderTeamChallengesContent()}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     )
@@ -324,13 +557,73 @@ export function PartyLobby() {
           </h1>
           <p className="text-gray-400 text-lg">Train with friends in synchronized multiplayer sessions</p>
           
+          {/* Authentication Required Notice */}
+          {!isAuthenticated && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-6 bg-blue-900/20 border border-blue-500/30 rounded-xl p-6"
+            >
+              <div className="text-center">
+                <div className="text-4xl mb-3">👥</div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Guest Mode</h3>
+                <p className="text-gray-300 mb-4">
+                  You can test the party system as a guest. For full features, sign in with Google.
+                </p>
+                <div className="flex justify-center space-x-4">
+                  <button
+                    onClick={() => window.location.href = '/login'}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    🔑 Sign In with Google
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
           {/* Connection Status */}
           <div className="mt-4 inline-flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
             <span className="text-sm text-gray-400">
-              {isConnected ? 'Connected to party server' : 'Connecting to party server...'}
+              {isConnected ? 
+                `Connected to party server (${window.location.hostname === 'myaimtrainer.loca.lt' ? 'Localtunnel' : 'Localhost'})` : 
+                'Connecting to party server...'
+              }
             </span>
           </div>
+          
+          {/* Connection Info */}
+          <div className="mt-2 text-xs text-gray-500">
+            {window.location.hostname === 'myaimtrainer.loca.lt' ? (
+              <span>🌐 Using Localtunnel (Polling Transport)</span>
+            ) : (
+              <span>🏠 Using Localhost (WebSocket Transport)</span>
+            )}
+          </div>
+          
+          {/* Localhost Test Button */}
+          {!isConnected && window.location.hostname === 'myaimtrainer.loca.lt' && (
+            <div className="mt-4">
+              <a 
+                href="http://localhost:3000" 
+                target="_blank" 
+                className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm transition-colors"
+              >
+                🏠 Test on Localhost
+              </a>
+              <p className="text-xs text-gray-500 mt-1">
+                If localtunnel doesn't work, try localhost for testing.
+              </p>
+            </div>
+          )}
+          
+          {/* Debug Info (Development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-2 text-xs text-gray-500 bg-gray-900 rounded px-2 py-1 font-mono">
+              Debug: Connected={isConnected.toString()}, InParty={isInParty.toString()}, User={!!user}, Authenticated={isAuthenticated.toString()}
+            </div>
+          )}
         </motion.div>
 
         {!isConnected ? (
@@ -340,10 +633,24 @@ export function PartyLobby() {
             className="text-center py-20"
           >
             <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Connecting to party system...</p>
+            <p className="text-gray-400 mb-2">Connecting to party system...</p>
+            <p className="text-xs text-gray-500">
+              If this takes too long, please check your internet connection and refresh the page.
+            </p>
+            
+            {/* Retry button */}
+            <button
+              onClick={() => {
+                console.log('🔄 Manual reconnect attempt')
+                connect()
+              }}
+              className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm transition-colors"
+            >
+              Retry Connection
+            </button>
           </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        ) : isAuthenticated ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Create Party */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -395,7 +702,59 @@ export function PartyLobby() {
               )}
             </motion.div>
 
-            {/* Join Party */}
+            {/* Join by Code */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
+            >
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                <span className="text-2xl mr-3">🎫</span>
+                Join by Code
+              </h3>
+              <p className="text-gray-400 mb-6">Enter a party invite code to join instantly</p>
+              
+              {!showJoinByCodeForm ? (
+                <button
+                  onClick={() => setShowJoinByCodeForm(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                  Enter Party Code
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={partyCodeInput}
+                    onChange={(e) => setPartyCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Enter 6-character code..."
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-center text-lg font-mono tracking-wider"
+                    maxLength={6}
+                    style={{ letterSpacing: '0.2em' }}
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleJoinByCode}
+                      disabled={!partyCodeInput.trim() || partyCodeInput.length !== 6}
+                      className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-semibold transition-all"
+                    >
+                      Join Party
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowJoinByCodeForm(false)
+                        setPartyCodeInput('')
+                      }}
+                      className="px-4 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Join Party (Legacy) */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -403,16 +762,16 @@ export function PartyLobby() {
             >
               <h3 className="text-xl font-bold text-white mb-4 flex items-center">
                 <span className="text-2xl mr-3">🎯</span>
-                Join Party
+                Join by ID
               </h3>
-              <p className="text-gray-400 mb-6">Join an existing party with an invite code</p>
+              <p className="text-gray-400 mb-6">Join an existing party with party ID</p>
               
               {!showJoinForm ? (
                 <button
                   onClick={() => setShowJoinForm(true)}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
                 >
-                  Join Existing Party
+                  Join by Party ID
                 </button>
               ) : (
                 <div className="space-y-4">
@@ -434,7 +793,170 @@ export function PartyLobby() {
                     <button
                       onClick={handleJoinParty}
                       disabled={!joinPartyId.trim()}
+                      className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-semibold transition-all"
+                    >
+                      Join
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowJoinForm(false)
+                        setJoinPartyId('')
+                        setJoinInviteCode('')
+                      }}
+                      className="px-4 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Create Party */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
+            >
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                <span className="text-2xl mr-3">🚀</span>
+                Create Party
+              </h3>
+              <p className="text-gray-400 mb-6">Start a new training party and invite your friends</p>
+              
+              {!showCreateForm ? (
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                  Create New Party
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={newPartyName}
+                    onChange={(e) => setNewPartyName(e.target.value)}
+                    placeholder="Enter party name..."
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400"
+                    maxLength={50}
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleCreateParty}
+                      disabled={!newPartyName.trim()}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-semibold transition-all"
+                    >
+                      Create
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowCreateForm(false)
+                        setNewPartyName('')
+                      }}
+                      className="px-4 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Join by Code */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
+            >
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                <span className="text-2xl mr-3">🎫</span>
+                Join by Code
+              </h3>
+              <p className="text-gray-400 mb-6">Enter a party invite code to join instantly</p>
+              
+              {!showJoinByCodeForm ? (
+                <button
+                  onClick={() => setShowJoinByCodeForm(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                  Enter Party Code
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={partyCodeInput}
+                    onChange={(e) => setPartyCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Enter 6-character code..."
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-center text-lg font-mono tracking-wider"
+                    maxLength={6}
+                    style={{ letterSpacing: '0.2em' }}
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleJoinByCode}
+                      disabled={!partyCodeInput.trim() || partyCodeInput.length !== 6}
                       className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-semibold transition-all"
+                    >
+                      Join Party
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowJoinByCodeForm(false)
+                        setPartyCodeInput('')
+                      }}
+                      className="px-4 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Join Party (Legacy) */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
+            >
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                <span className="text-2xl mr-3">🎯</span>
+                Join by ID
+              </h3>
+              <p className="text-gray-400 mb-6">Join an existing party with party ID</p>
+              
+              {!showJoinForm ? (
+                <button
+                  onClick={() => setShowJoinForm(true)}
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                  Join by Party ID
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={joinPartyId}
+                    onChange={(e) => setJoinPartyId(e.target.value)}
+                    placeholder="Enter party ID..."
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
+                    value={joinInviteCode}
+                    onChange={(e) => setJoinInviteCode(e.target.value)}
+                    placeholder="Enter invite code (optional)..."
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400"
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleJoinParty}
+                      disabled={!joinPartyId.trim()}
+                      className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-semibold transition-all"
                     >
                       Join
                     </button>

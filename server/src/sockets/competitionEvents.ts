@@ -17,11 +17,23 @@ const userCompetitions = new Map<string, string>() // userId -> competitionId
 export function setupCompetitionEvents(io: Server, socket: Socket) {
   const userId = socket.data.userId
   const username = socket.data.username
+  const isGuest = socket.data.isGuest || false
 
   if (!userId || !username) {
-    socket.emit('error', { message: 'User not authenticated', code: 'AUTH_REQUIRED' })
+    socket.emit('error', { 
+      message: 'User identification failed', 
+      code: 'USER_ID_REQUIRED',
+      details: 'Socket authentication middleware may not be working correctly'
+    })
+    logger.error('Competition events setup failed: Missing user identification', {
+      socketId: socket.id,
+      userId,
+      username
+    })
     return
   }
+
+  logger.info(`Setting up competition events for user: ${username} (${userId}) | Guest: ${isGuest}`)
 
   // Find Match
   socket.on('competition:find-match', async (gameMode: GameMode) => {

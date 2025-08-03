@@ -31,7 +31,8 @@ const trainingCategories = [
       { id: 'sphere-track', name: 'Sphere Track', difficulty: 'Intermediate', duration: '60s', description: 'Track spheres moving in 3D space' },
       { id: 'close-tracking', name: 'Close Tracking', difficulty: 'Beginner', duration: '45s', description: 'Track targets at close range' },
       { id: 'long-tracking', name: 'Long Range Tracking', difficulty: 'Advanced', duration: '60s', description: 'Track distant moving targets' },
-      { id: 'air-tracking', name: 'Air Tracking', difficulty: 'Expert', duration: '60s', description: 'Track airborne targets with physics' }
+      { id: 'air-tracking', name: 'Air Tracking', difficulty: 'Expert', duration: '60s', description: 'Track airborne targets with physics' },
+      { id: 'ai-prediction', name: 'AI Prediction', difficulty: 'Master', duration: 'Variable', description: 'AI-powered prediction challenges with machine learning', isNew: true }
     ]
   },
   {
@@ -44,7 +45,8 @@ const trainingCategories = [
       { id: 'sixshot', name: 'Sixshot', difficulty: 'Intermediate', duration: '30s', description: 'Six targets in sequence' },
       { id: 'multishot', name: 'Multishot', difficulty: 'Advanced', duration: '45s', description: 'Multiple simultaneous targets' },
       { id: 'arc-flick', name: 'Arc Flick', difficulty: 'Expert', duration: '40s', description: 'Flick in arc patterns' },
-      { id: 'speed-flick', name: 'Speed Flick', difficulty: 'Expert', duration: '20s', description: 'Ultra-fast flick challenges' }
+      { id: 'speed-flick', name: 'Speed Flick', difficulty: 'Expert', duration: '20s', description: 'Ultra-fast flick challenges' },
+      { id: 'advanced-flick', name: 'Advanced Flick', difficulty: 'Master', duration: 'Variable', description: 'Multi-directional patterns with advanced analytics', isNew: true }
     ]
   },
   {
@@ -137,6 +139,7 @@ export function TrainingHubPage() {
       case 'Intermediate': return 5
       case 'Advanced': return 10
       case 'Expert': return 15
+      case 'Master': return 20
       default: return 1
     }
   }
@@ -147,6 +150,7 @@ export function TrainingHubPage() {
       case 'Intermediate': return 'text-yellow-400'
       case 'Advanced': return 'text-orange-400'
       case 'Expert': return 'text-red-400'
+      case 'Master': return 'text-purple-400'
       default: return 'text-gray-400'
     }
   }
@@ -155,7 +159,14 @@ export function TrainingHubPage() {
 
   const handleModeSelect = (modeId: string) => {
     if (unlockedModes.has(modeId)) {
-      navigate('/train', { state: { selectedMode: modeId } })
+      // Special handling for advanced training modes
+      if (modeId === 'advanced-flick') {
+        navigate('/advanced-flick-training')
+      } else if (modeId === 'ai-prediction') {
+        navigate('/ai-prediction-training')
+      } else {
+        navigate('/train', { state: { selectedMode: modeId } })
+      }
     }
   }
 
@@ -310,9 +321,16 @@ export function TrainingHubPage() {
                               )}
                             </div>
 
-                            <h3 className={`text-lg font-bold mb-2 ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>
-                              {mode.name}
-                            </h3>
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className={`text-lg font-bold ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>
+                                {mode.name}
+                              </h3>
+                              {(mode as any).isNew && isUnlocked && (
+                                <span className="bg-gradient-to-r from-pink-500 to-violet-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
                             <p className={`text-sm mb-4 ${isUnlocked ? 'text-gray-400' : 'text-gray-600'}`}>
                               {mode.description}
                             </p>
