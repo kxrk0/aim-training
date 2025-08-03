@@ -602,13 +602,13 @@ app.whenReady().then(() => {
     createSplashWindow()
   }
 
-  // Start backend server
-  startBackendServer()
+  // VPS Backend kullanıyoruz - local server başlatma gerekmiyor
+  // startBackendServer()
   
-  // Create main window
+  // Create main window - VPS backend hazır olduğu için bekleme gereksiz
   setTimeout(() => {
     createWindow()
-  }, isDev ? 0 : 2000)
+  }, isDev ? 0 : 500)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -624,16 +624,17 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
-  if (serverProcess && !serverProcess.killed) {
-    serverProcess.kill('SIGTERM')
-    
-    // Give server time to gracefully shut down
-    setTimeout(() => {
-      if (!serverProcess.killed) {
-        serverProcess.kill('SIGKILL')
-      }
-    }, 5000)
-  }
+  // VPS Backend kullanıyoruz - local server cleanup gereksiz
+  // if (serverProcess && !serverProcess.killed) {
+  //   serverProcess.kill('SIGTERM')
+  //   
+  //   // Give server time to gracefully shut down
+  //   setTimeout(() => {
+  //     if (!serverProcess.killed) {
+  //       serverProcess.kill('SIGKILL')
+  //     }
+  //   }, 5000)
+  // }
 })
 
 // IPC handlers

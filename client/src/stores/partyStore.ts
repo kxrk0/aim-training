@@ -98,11 +98,18 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
     const getWebSocketUrl = () => {
       const hostname = window.location.hostname
       const protocol = window.location.protocol
+      const origin = window.location.origin
+      
       console.log('🌐 Current hostname:', hostname)
       console.log('🔗 Current protocol:', protocol)
+      console.log('🏠 Current origin:', origin)
       
-      // Desktop app (Electron) - connect to VPS
-      if (protocol === 'file:') {
+      // Desktop app (Electron) - Çoklu kontrol
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
         console.log('🖥️ Desktop app detected - connecting to VPS')
         return 'https://aim.liorabelleleather.com'
       }

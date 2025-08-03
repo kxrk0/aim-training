@@ -274,7 +274,7 @@ temp/
 .three-cache/
 
 # Game assets cache (if any)
-.assets-cache/
+.assets-cache/ 
 
 # ===============================================
 # ELECTRON BUILD

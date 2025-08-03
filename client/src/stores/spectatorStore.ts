@@ -94,8 +94,19 @@ export const useSpectatorStore = create<SpectatorStoreState>()(
 
       // Dynamic WebSocket URL based on environment
       const getSocketUrl = () => {
-        if (window.location.protocol === 'file:') {
-          // Desktop app - connect to VPS
+        const protocol = window.location.protocol
+        const origin = window.location.origin
+        const hostname = window.location.hostname
+        
+        console.log('🔗 Spectator URL Detection - Protocol:', protocol, 'Origin:', origin, 'Hostname:', hostname)
+        
+        // Desktop app (Electron) - Robust detection
+        if (protocol === 'file:' || 
+            origin === 'file://' || 
+            hostname === '' || 
+            hostname === 'file' ||
+            (typeof window !== 'undefined' && (window as any).electronAPI)) {
+          console.log('🖥️ Spectator: Desktop app detected - connecting to VPS')
           return 'https://aim.liorabelleleather.com'
         }
         return 'http://localhost:3001' // Development

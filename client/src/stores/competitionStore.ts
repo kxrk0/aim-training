@@ -33,7 +33,23 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
 
   // Actions
   findMatch: (gameMode: GameMode) => {
-    const socket = io()
+    // Dynamic WebSocket URL for Electron compatibility
+    const getSocketUrl = () => {
+      const protocol = window.location.protocol
+      const origin = window.location.origin
+      const hostname = window.location.hostname
+      
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
+        return 'https://aim.liorabelleleather.com'
+      }
+      return undefined // Use default (current domain)
+    }
+    
+    const socket = io(getSocketUrl())
     socket.emit('competition:find-match', gameMode)
     set({ 
       isSearching: true, 
@@ -43,12 +59,44 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
   },
 
   acceptMatch: (competitionId: string) => {
-    const socket = io()
+    // Dynamic WebSocket URL for Electron compatibility
+    const getSocketUrl = () => {
+      const protocol = window.location.protocol
+      const origin = window.location.origin
+      const hostname = window.location.hostname
+      
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
+        return 'https://aim.liorabelleleather.com'
+      }
+      return undefined // Use default (current domain)
+    }
+    
+    const socket = io(getSocketUrl())
     socket.emit('competition:accept-match', competitionId)
   },
 
   cancelSearch: () => {
-    const socket = io()
+    // Dynamic WebSocket URL for Electron compatibility
+    const getSocketUrl = () => {
+      const protocol = window.location.protocol
+      const origin = window.location.origin
+      const hostname = window.location.hostname
+      
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
+        return 'https://aim.liorabelleleather.com'
+      }
+      return undefined // Use default (current domain)
+    }
+    
+    const socket = io(getSocketUrl())
     socket.emit('competition:cancel-search')
     set({ 
       isSearching: false, 
@@ -58,12 +106,44 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
   },
 
   setReady: (isReady: boolean) => {
-    const socket = io()
+    // Dynamic WebSocket URL for Electron compatibility
+    const getSocketUrl = () => {
+      const protocol = window.location.protocol
+      const origin = window.location.origin
+      const hostname = window.location.hostname
+      
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
+        return 'https://aim.liorabelleleather.com'
+      }
+      return undefined // Use default (current domain)
+    }
+    
+    const socket = io(getSocketUrl())
     socket.emit('competition:ready', isReady)
   },
 
   sendGameUpdate: (data: any) => {
-    const socket = io()
+    // Dynamic WebSocket URL for Electron compatibility
+    const getSocketUrl = () => {
+      const protocol = window.location.protocol
+      const origin = window.location.origin
+      const hostname = window.location.hostname
+      
+      if (protocol === 'file:' || 
+          origin === 'file://' || 
+          hostname === '' || 
+          hostname === 'file' ||
+          (typeof window !== 'undefined' && (window as any).electronAPI)) {
+        return 'https://aim.liorabelleleather.com'
+      }
+      return undefined // Use default (current domain)
+    }
+    
+    const socket = io(getSocketUrl())
     socket.emit('competition:game-update', data)
   },
 
@@ -97,7 +177,23 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
 
 // Socket event listeners
 if (typeof window !== 'undefined') {
-  const socket = io()
+  // Dynamic WebSocket URL for Electron compatibility
+  const getSocketUrl = () => {
+    const protocol = window.location.protocol
+    const origin = window.location.origin
+    const hostname = window.location.hostname
+    
+    if (protocol === 'file:' || 
+        origin === 'file://' || 
+        hostname === '' || 
+        hostname === 'file' ||
+        (typeof window !== 'undefined' && (window as any).electronAPI)) {
+      return 'https://aim.liorabelleleather.com'
+    }
+    return undefined // Use default (current domain)
+  }
+  
+  const socket = io(getSocketUrl())
   
   socket.on('competition:match-found', (competition: Competition) => {
     useCompetitionStore.getState().setMatch(competition)

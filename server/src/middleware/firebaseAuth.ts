@@ -111,8 +111,22 @@ export const socketFirebaseAuth = async (socket: any, next: any) => {
     console.log('🔍 Auth token present:', !!token)
     
     if (!token) {
-      console.error('❌ No Firebase token provided - authentication required')
-      return next(new Error('Authentication required. Please sign in with Google.'))
+      console.log('⚠️ No Firebase token provided - setting up guest user')
+      
+      // Guest user setup
+      socket.data.userId = `guest_${socket.id}` 
+      socket.data.username = `Guest_${socket.id.substring(0, 6)}`
+      socket.data.email = null
+      socket.data.picture = null
+      socket.data.isGuest = true
+      
+      console.log('✅ Guest user setup completed:', {
+        userId: socket.data.userId,
+        username: socket.data.username,
+        isGuest: true
+      })
+      
+      return next()
     }
 
     try {
