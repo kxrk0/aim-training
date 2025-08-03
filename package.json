@@ -1,6 +1,6 @@
 {
   "name": "aim-trainer-desktop",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Professional FPS Aim Training Desktop Application",
   "main": "electron/main.js",
   "homepage": "./",
@@ -26,7 +26,8 @@
     "clean": "rimraf dist-electron && rimraf client/dist && rimraf server/dist",
     "rebuild": "npm run clean && npm run build && npm run electron:pack",
     "install:server": "cd server && npm install --production",
-    "install:vps": "npm run install:server && cd server && npm run build"
+    "install:vps": "npm run install:server && cd server && npm run build",
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"
@@ -34,7 +35,7 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "electron": "29.0.0",
-          "electron-builder": "^25.1.8",
+    "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
     "wait-on": "^8.0.1",
@@ -90,7 +91,7 @@
       "publish": [
         {
           "provider": "github",
-          "owner": "your-github-username",
+          "owner": "kxrk0",
           "repo": "aim-training"
         }
       ]
@@ -126,7 +127,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "your-github-username",
+        "owner": "kxrk0",
         "repo": "aim-training"
       }
     ],
