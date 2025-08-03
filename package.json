@@ -30,7 +30,7 @@
     "release": "node scripts/release.js"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
@@ -38,8 +38,8 @@
     "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
     "electron-reload": "^2.0.0-alpha.1",
-    "wait-on": "^8.0.1",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "wait-on": "^8.0.1"
   },
   "build": {
     "appId": "com.aimtrainer.desktop",
