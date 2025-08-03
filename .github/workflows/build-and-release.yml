@@ -46,6 +46,15 @@ jobs:
       run: |
         npm version ${{ github.event.inputs.version }} --no-git-tag-version
         
+    - name: Auto-commit and push version changes
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add package.json
+        git commit -m "chore: bump version to ${{ github.event.inputs.version }} [skip ci]" || exit 0
+        git push
+        
     - name: Build Electron app
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

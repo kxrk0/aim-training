@@ -82,8 +82,8 @@ export class FirebaseAuthService {
     } else {
       console.log('🌐 Web environment - using popup flow for Google auth');
       // For web, use popup flow
-      const result = await signInWithPopup(auth, googleProvider);
-      return result.user;
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
     }
   }
 

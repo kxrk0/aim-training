@@ -143,32 +143,32 @@ function App() {
         const loadingScreen = document.getElementById('loading-screen')
         const rootElement = document.getElementById('root')
         
-        if (loadingScreen && rootElement) {
+                  if (loadingScreen && rootElement) {
           // First make root element visible
-          rootElement.style.opacity = '1'
-          rootElement.style.display = 'block'
-          rootElement.style.visibility = 'visible'
+            rootElement.style.opacity = '1'
+            rootElement.style.display = 'block'
+            rootElement.style.visibility = 'visible'
           rootElement.style.position = 'relative'
-          rootElement.style.zIndex = '1'
+            rootElement.style.zIndex = '1'
           rootElement.style.width = '100%'
           rootElement.style.height = '100vh'
           
-          console.log('📦 Root element visibility updated:', {
-            opacity: rootElement.style.opacity,
-            display: rootElement.style.display,
+            console.log('📦 Root element visibility updated:', {
+              opacity: rootElement.style.opacity,
+              display: rootElement.style.display,
             visibility: rootElement.style.visibility,
             position: rootElement.style.position,
             zIndex: rootElement.style.zIndex
-          })
-          
+            })
+            
           // Then fade out loading screen
-          loadingScreen.classList.add('fade-out')
-          
-          setTimeout(() => {
-            loadingScreen.style.display = 'none'
+            loadingScreen.classList.add('fade-out')
+            
+            setTimeout(() => {
+              loadingScreen.style.display = 'none'
             loadingScreen.style.visibility = 'hidden'
-            setIsAppReady(true)
-            console.log('🎉 App is ready and visible!')
+              setIsAppReady(true)
+              console.log('🎉 App is ready and visible!')
             
             // Force a repaint to ensure visibility
             rootElement.style.transform = 'translateZ(0)'
@@ -176,16 +176,16 @@ function App() {
               rootElement.style.transform = ''
             })
             
-            console.log('🔍 Final root styles:', {
-              opacity: rootElement.style.opacity,
-              display: rootElement.style.display,
-              visibility: rootElement.style.visibility,
-              clientHeight: rootElement.clientHeight,
+              console.log('🔍 Final root styles:', {
+                opacity: rootElement.style.opacity,
+                display: rootElement.style.display,
+                visibility: rootElement.style.visibility,
+                clientHeight: rootElement.clientHeight,
               scrollHeight: rootElement.scrollHeight,
-              children: rootElement.children.length
-            })
-          }, 500)
-        }
+                children: rootElement.children.length
+              })
+            }, 500)
+          }
       }, 800)
     }
   }, [isAuthenticated, loadingStage])
@@ -217,37 +217,37 @@ function App() {
           
           {/* Main App Routes - Require Authentication */}
           {isAuthenticated && !shouldRedirectToLogin ? (
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="train" element={<GamePage />} />
-              <Route path="training-hub" element={<TrainingHubPage />} />
-              <Route path="leaderboard" element={<LeaderboardPage />} />
-              <Route path="achievements" element={<AchievementsPage />} />
-              <Route path="advanced-flick-training" element={<AdvancedFlickTraining />} />
-              <Route path="ai-prediction-training" element={<AIPredictionTraining />} />
-              <Route path="party" element={<PartyLobby />} />
-              <Route path="party/:inviteCode" element={<PartyLobby />} />
-              <Route path="party-game/:partyId" element={<PartyGamePage />} />
-              <Route path="spectate/:partyId" element={<SpectatorViewer partyId="" onExit={() => {}} />} />
-              <Route path="profile" element={<ProfilePage />} />
-                <Route path="xp-demo" element={<XPDemoPage />} />
-              <Route path="settings" element={<SettingsPage />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="train" element={<GamePage />} />
+            <Route path="training-hub" element={<TrainingHubPage />} />
+            <Route path="leaderboard" element={<LeaderboardPage />} />
+            <Route path="achievements" element={<AchievementsPage />} />
+            <Route path="advanced-flick-training" element={<AdvancedFlickTraining />} />
+            <Route path="ai-prediction-training" element={<AIPredictionTraining />} />
+            <Route path="party" element={<PartyLobby />} />
+            <Route path="party/:inviteCode" element={<PartyLobby />} />
+            <Route path="party-game/:partyId" element={<PartyGamePage />} />
+            <Route path="spectate/:partyId" element={<SpectatorViewer partyId="" onExit={() => {}} />} />
+            <Route path="profile" element={<ProfilePage />} />
+              <Route path="xp-demo" element={<XPDemoPage />} />
+            <Route path="settings" element={<SettingsPage />} />
 
-              <Route path="competition" element={<CompetitionMatchmaking />} />
-              <Route path="tournaments" element={<TournamentPage />} />
-              <Route path="seasons" element={<SeasonPage />} />
+            <Route path="competition" element={<CompetitionMatchmaking />} />
+            <Route path="tournaments" element={<TournamentPage />} />
+            <Route path="seasons" element={<SeasonPage />} />
 
-              
-              {/* Phase 8 Advanced Features */}
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="adaptive-training" element={<AdaptiveTraining />} />
+            
+            {/* Phase 8 Advanced Features */}
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="adaptive-training" element={<AdaptiveTraining />} />
 
-              <Route path="hardware" element={<HardwareOptimization />} />
-              <Route path="replay" element={<ReplaySystem />} />
-              <Route path="guilds" element={<TrainingGuilds />} />
-              <Route path="custom-training" element={<CustomTraining />} />
-              <Route path="social" element={<SocialFeatures />} />
-            </Route>
+            <Route path="hardware" element={<HardwareOptimization />} />
+            <Route path="replay" element={<ReplaySystem />} />
+            <Route path="guilds" element={<TrainingGuilds />} />
+            <Route path="custom-training" element={<CustomTraining />} />
+            <Route path="social" element={<SocialFeatures />} />
+          </Route>
           ) : !shouldRedirectToLogin ? (
             // Default to login if not authenticated and not redirecting
             <Route path="*" element={<Navigate to="/login" replace />} />
