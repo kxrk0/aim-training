@@ -22,6 +22,11 @@ let splashWindow
 let clientServer
 let clientPort = 3000
 
+// Auto-updater state
+let updateCheckInProgress = false
+let updateAvailable = false
+let downloadInProgress = false
+
 // Simple MIME type helper
 function getMimeType(filename) {
   const ext = path.extname(filename).toLowerCase()
@@ -43,168 +48,312 @@ function getMimeType(filename) {
   return mimeTypes[ext] || 'application/octet-stream'
 }
 
-// Configure auto-updater (Silent mode)
-autoUpdater.autoDownload = true
-autoUpdater.autoInstallOnAppQuit = false // We handle install manually
-autoUpdater.logger = null // Disable notifications
+// ====================
+// MODERN AUTO-UPDATER SYSTEM
+// ====================
 
-// Update check state
-let updateCheckTimeout
-let isUpdateCheckComplete = false
-let hasNetworkError = false
+// Configure auto-updater with modern settings
+function configureAutoUpdater() {
+  // Basic configuration
+  autoUpdater.autoDownload = false // Manual download control
+  autoUpdater.autoInstallOnAppQuit = false // Manual install control
+  autoUpdater.allowPrerelease = false
+  autoUpdater.allowDowngrade = false
+  
+  // Enhanced error handling
+  autoUpdater.logger = {
+    info: (message) => console.log(`[AUTO-UPDATER] INFO: ${message}`),
+    warn: (message) => console.log(`[AUTO-UPDATER] WARN: ${message}`),
+    error: (message) => console.log(`[AUTO-UPDATER] ERROR: ${message}`),
+    debug: (message) => console.log(`[AUTO-UPDATER] DEBUG: ${message}`)
+  }
 
-// Network connectivity check
-async function checkNetworkConnectivity() {
-  try {
-    const https = require('https')
-    return new Promise((resolve) => {
-      const req = https.request({
-        hostname: 'api.github.com',
-        port: 443,
-        path: '/repos/kxrk0/aim-training/releases/latest',
-        method: 'HEAD',
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'AIM-TRAINER-PRO/1.1.1 (electron-updater)'
-        }
-      }, (res) => {
-        console.log('Auto-updater: Network check response:', res.statusCode)
-        resolve(res.statusCode >= 200 && res.statusCode < 400)
-      })
-      
-      req.on('error', (error) => {
-        console.log('Auto-updater: Network check error:', error.code)
-        resolve(false)
-      })
-      req.on('timeout', () => {
-        console.log('Auto-updater: Network check timeout')
-        req.destroy()
-        resolve(false)
-      })
-      req.end()
-    })
-  } catch (error) {
-    console.error('Auto-updater: Network check exception:', error)
-    return false
-  }
-}
-
-// Handle update check completion
-function handleUpdateCheckComplete(reason, error = null) {
-  if (isUpdateCheckComplete) return
-  
-  isUpdateCheckComplete = true
-  if (updateCheckTimeout) {
-    clearTimeout(updateCheckTimeout)
-    updateCheckTimeout = null
-  }
-  
-  let statusMessage = 'Starting application...'
-  let delay = 1500
-  
-  switch (reason) {
-    case 'timeout':
-      statusMessage = 'Update check timeout - Starting app...'
-      delay = 2000
-      console.log('Auto-updater: Update check timeout')
-      break
-    case 'network-error':
-      statusMessage = 'No internet connection - Starting app...'
-      delay = 2000
-      console.log('Auto-updater: Network error')
-      break
-    case 'error':
-      statusMessage = 'Update check failed - Starting app...'
-      delay = 2000
-      console.error('Auto-updater error:', error)
-      break
-    case 'no-update':
-      statusMessage = 'App is up to date - Starting...'
-      delay = 1000
-      console.log('Auto-updater: No updates available')
-      break
-    default:
-      console.log('Auto-updater: Unknown completion reason:', reason)
-  }
-  
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.webContents.send('status-update', statusMessage)
-    
-    setTimeout(() => {
-      if (!mainWindow) {
-        console.log('Creating main window after update check:', reason)
-        createWindow()
-      }
-    }, delay)
-  }
-}
-
-// Auto-updater events
-autoUpdater.on('checking-for-update', () => {
-  console.log('Auto-updater: Checking for updates...')
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.webContents.send('status-update', 'Checking for updates...')
-  }
-  
-  // Set timeout for update check (30 seconds)
-  updateCheckTimeout = setTimeout(() => {
-    if (!isUpdateCheckComplete) {
-      handleUpdateCheckComplete('timeout')
+  // Set update source
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'kxrk0',
+    repo: 'aim-training',
+    private: false,
+    requestHeaders: {
+      'User-Agent': 'AIM-TRAINER-PRO/1.0.0'
     }
-  }, 30000)
-})
+  })
 
-autoUpdater.on('update-available', (info) => {
-  console.log('Auto-updater: Update available -', info.version)
-  isUpdateCheckComplete = true
-  if (updateCheckTimeout) {
-    clearTimeout(updateCheckTimeout)
-    updateCheckTimeout = null
+  console.log('[AUTO-UPDATER] Configuration completed')
+}
+
+// Modern event handlers
+function setupAutoUpdaterEvents() {
+  // Checking for updates
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AUTO-UPDATER] Checking for updates...')
+    updateCheckInProgress = true
+    sendToRenderer('update-checking')
+  })
+
+  // Update available
+  autoUpdater.on('update-available', (info) => {
+    console.log(`[AUTO-UPDATER] Update available: ${info.version}`)
+    updateAvailable = true
+    updateCheckInProgress = false
+    sendToRenderer('update-available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes,
+      releaseName: info.releaseName,
+      releaseDate: info.releaseDate
+    })
+    
+    // Auto-start download
+    startUpdateDownload()
+  })
+
+  // No update available
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[AUTO-UPDATER] No updates available')
+    updateCheckInProgress = false
+    sendToRenderer('update-not-available', { currentVersion: info.version })
+  })
+
+  // Download progress
+  autoUpdater.on('download-progress', (progressObj) => {
+    const percent = Math.round(progressObj.percent)
+    console.log(`[AUTO-UPDATER] Download progress: ${percent}%`)
+    sendToRenderer('update-download-progress', {
+      percent: percent,
+      bytesPerSecond: progressObj.bytesPerSecond,
+      total: progressObj.total,
+      transferred: progressObj.transferred
+    })
+  })
+
+  // Update downloaded
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log(`[AUTO-UPDATER] Update downloaded: ${info.version}`)
+    downloadInProgress = false
+    sendToRenderer('update-downloaded', {
+      version: info.version
+    })
+    
+    // Show install dialog
+    showUpdateReadyDialog(info.version)
+  })
+
+  // Error handling
+  autoUpdater.on('error', (error) => {
+    console.error('[AUTO-UPDATER] Error:', error)
+    updateCheckInProgress = false
+    downloadInProgress = false
+    
+    let errorMessage = 'Unknown error occurred'
+    if (error.message) {
+      errorMessage = error.message
+    }
+    
+    sendToRenderer('update-error', { 
+      message: errorMessage,
+      code: error.code || 'UNKNOWN_ERROR'
+    })
+  })
+
+  console.log('[AUTO-UPDATER] Event handlers registered')
+}
+
+// Send message to renderer safely
+function sendToRenderer(channel, data = {}) {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, data)
+    }
+  } catch (error) {
+    console.error(`[AUTO-UPDATER] Failed to send message to renderer: ${error.message}`)
   }
+}
+
+// Check for updates with robust error handling
+async function checkForUpdates() {
+  if (isDev) {
+    console.log('[AUTO-UPDATER] Skipping update check in development mode')
+    return
+  }
+
+  if (updateCheckInProgress) {
+    console.log('[AUTO-UPDATER] Update check already in progress')
+    return
+  }
+
+  try {
+    console.log('[AUTO-UPDATER] Starting update check...')
+    
+    // Test network connectivity first
+    const hasNetwork = await testNetworkConnectivity()
+    if (!hasNetwork) {
+      throw new Error('No network connectivity')
+    }
+
+    // Start update check with timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Update check timeout')), 30000)
+    })
+
+    const updatePromise = autoUpdater.checkForUpdatesAndNotify()
+    
+    await Promise.race([updatePromise, timeoutPromise])
+    
+  } catch (error) {
+    console.error('[AUTO-UPDATER] Failed to check for updates:', error.message)
+    updateCheckInProgress = false
+    sendToRenderer('update-error', { 
+      message: `Update check failed: ${error.message}`,
+      code: 'CHECK_FAILED'
+    })
+  }
+}
+
+// Start update download
+async function startUpdateDownload() {
+  if (downloadInProgress) {
+    console.log('[AUTO-UPDATER] Download already in progress')
+    return
+  }
+
+  try {
+    console.log('[AUTO-UPDATER] Starting update download...')
+    downloadInProgress = true
+    sendToRenderer('update-download-started')
+    
+    await autoUpdater.downloadUpdate()
+    
+  } catch (error) {
+    console.error('[AUTO-UPDATER] Download failed:', error.message)
+    downloadInProgress = false
+    sendToRenderer('update-error', { 
+      message: `Download failed: ${error.message}`,
+      code: 'DOWNLOAD_FAILED'
+    })
+  }
+}
+
+// Install update
+function installUpdate() {
+  try {
+    console.log('[AUTO-UPDATER] Installing update and restarting...')
+    autoUpdater.quitAndInstall(false, true)
+  } catch (error) {
+    console.error('[AUTO-UPDATER] Install failed:', error.message)
+    sendToRenderer('update-error', { 
+      message: `Install failed: ${error.message}`,
+      code: 'INSTALL_FAILED'
+    })
+  }
+}
+
+// Show update ready dialog
+function showUpdateReadyDialog(version) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+
+  const options = {
+    type: 'info',
+    title: 'Update Ready',
+    message: `AIM TRAINER PRO v${version} is ready to install`,
+    detail: 'The update has been downloaded and is ready to install. Do you want to restart now?',
+    buttons: ['Restart Now', 'Install Later'],
+    defaultId: 0,
+    cancelId: 1
+  }
+
+  dialog.showMessageBox(mainWindow, options).then((result) => {
+    if (result.response === 0) {
+      installUpdate()
+    }
+  }).catch((error) => {
+    console.error('[AUTO-UPDATER] Dialog error:', error)
+  })
+}
+
+// Network connectivity test
+async function testNetworkConnectivity() {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      port: 443,
+      path: '/repos/kxrk0/aim-training/releases/latest',
+      method: 'HEAD',
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'AIM-TRAINER-PRO/1.0.0'
+      }
+    }
+
+    const req = require('https').request(options, (res) => {
+      resolve(res.statusCode >= 200 && res.statusCode < 400)
+    })
+
+    req.on('error', () => resolve(false))
+    req.on('timeout', () => {
+      req.destroy()
+      resolve(false)
+    })
+
+    req.end()
+  })
+}
+
+// IPC handlers for renderer communication
+function setupUpdateIPC() {
+  ipcMain.handle('check-for-updates', async () => {
+    await checkForUpdates()
+  })
+
+  ipcMain.handle('start-update-download', async () => {
+    await startUpdateDownload()
+  })
+
+  ipcMain.handle('install-update', () => {
+    installUpdate()
+  })
+
+  ipcMain.handle('get-update-status', () => {
+    return {
+      checkInProgress: updateCheckInProgress,
+      updateAvailable: updateAvailable,
+      downloadInProgress: downloadInProgress
+    }
+  })
+
+  console.log('[AUTO-UPDATER] IPC handlers registered')
+}
+
+// Initialize auto-updater system
+function initializeAutoUpdater() {
+  if (isDev) {
+    console.log('[AUTO-UPDATER] Disabled in development mode')
+    return
+  }
+
+  console.log('[AUTO-UPDATER] Initializing modern auto-updater system...')
   
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.webContents.send('status-update', `Update found: v${info.version} - Downloading...`)
-  }
-})
-
-autoUpdater.on('update-not-available', () => {
-  handleUpdateCheckComplete('no-update')
-})
-
-autoUpdater.on('error', (error) => {
-  console.error('Auto-updater error:', error)
+  configureAutoUpdater()
+  setupAutoUpdaterEvents()
+  setupUpdateIPC()
   
-  // Check if it's a network-related error
-  const errorMessage = error.toString().toLowerCase()
-  if (errorMessage.includes('net::') || errorMessage.includes('network') || errorMessage.includes('timeout')) {
-    hasNetworkError = true
-    handleUpdateCheckComplete('network-error', error)
-  } else {
-    handleUpdateCheckComplete('error', error)
-  }
-})
+  // Start initial update check after app is ready
+  app.whenReady().then(() => {
+    setTimeout(() => {
+      checkForUpdates()
+    }, 5000) // Wait 5 seconds before first check
+    
+    // Schedule periodic checks every 30 minutes
+    setInterval(() => {
+      checkForUpdates()
+    }, 30 * 60 * 1000)
+  })
 
-autoUpdater.on('download-progress', (progressObj) => {
-  const percent = Math.round(progressObj.percent)
-  console.log(`Auto-updater: Download progress ${percent}%`)
-  
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.webContents.send('download-progress', progressObj)
-  }
-})
+  console.log('[AUTO-UPDATER] Initialization completed')
+}
 
-autoUpdater.on('update-downloaded', (info) => {
-  console.log('Auto-updater: Update downloaded -', info.version)
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.webContents.send('update-ready')
-  }
-  
-  // Install update after 3 seconds
-  setTimeout(() => {
-    console.log('Auto-updater: Installing update and restarting...')
-    autoUpdater.quitAndInstall()
-  }, 3000)
-})
+// ====================
+// END AUTO-UPDATER SYSTEM
+// ====================
 
 // Enable live reload for Electron in development
 if (isDev) {
@@ -893,51 +1042,21 @@ function startBackendServer() {
 
 // No custom protocol needed - use Firebase web flow
 
-// Robust update check with network connectivity
-async function initiateUpdateCheck() {
-  try {
-    // First check network connectivity
-    console.log('Auto-updater: Checking network connectivity...')
-    const hasNetwork = await checkNetworkConnectivity()
-    
-    if (!hasNetwork) {
-      console.log('Auto-updater: Network check failed, trying direct update check...')
-      // Try direct update check anyway (bypass network check)
-      try {
-        console.log('Auto-updater: Attempting direct update check...')
-        await autoUpdater.checkForUpdates()
-      } catch (directError) {
-        console.error('Auto-updater: Direct update check also failed:', directError)
-        handleUpdateCheckComplete('network-error')
-      }
-      return
-    }
-    
-    console.log('Auto-updater: Network OK, checking for updates...')
-    
-    // Start update check with additional safety
-    try {
-      await autoUpdater.checkForUpdates()
-    } catch (updateError) {
-      console.error('Auto-updater: Update check failed:', updateError)
-      handleUpdateCheckComplete('error', updateError)
-    }
-  } catch (error) {
-    console.error('Auto-updater: Network check failed:', error)
-    handleUpdateCheckComplete('error', error)
-  }
-}
-
 // App event handlers
 app.whenReady().then(async () => {
+  // Initialize modern auto-updater system
+  initializeAutoUpdater()
+  
   // Create splash screen for production
   if (!isDev) {
     createSplashWindow()
     
-    // Start update check after a brief delay to let splash screen render
+    // In production, create main window after splash
     setTimeout(() => {
-      initiateUpdateCheck()
-    }, 800)
+      if (!mainWindow) {
+        createWindow()
+      }
+    }, 3000)
   } else {
     // Development mode - create window immediately
     createWindow()
@@ -945,9 +1064,7 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      if (isDev || isUpdateCheckComplete) {
-        createWindow()
-      }
+      createWindow()
     }
   })
 })
@@ -1004,14 +1121,6 @@ ipcMain.handle('show-open-dialog', async () => {
     properties: ['openFile']
   })
   return result
-})
-
-ipcMain.handle('check-for-updates', () => {
-  if (!isDev) {
-    autoUpdater.checkForUpdatesAndNotify()
-    return true
-  }
-  return false
 })
 
 ipcMain.handle('restart-app', () => {
