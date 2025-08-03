@@ -355,6 +355,361 @@ function initializeAutoUpdater() {
 // END AUTO-UPDATER SYSTEM
 // ====================
 
+// ====================
+// CUSTOM HTTP UPDATE SYSTEM (GitHub API Direct)
+// ====================
+
+const https = require('https')
+const fs = require('fs')
+const path = require('path')
+
+// Custom update configuration
+const UPDATE_CONFIG = {
+  github: {
+    owner: 'kxrk0',
+    repo: 'aim-training'
+  },
+  checkInterval: 30000, // 30 seconds
+  downloadPath: path.join(app.getPath('temp'), 'aim-trainer-update')
+}
+
+// Custom update state
+let customUpdateState = {
+  checking: false,
+  available: false,
+  downloading: false,
+  version: null,
+  downloadUrl: null,
+  filePath: null
+}
+
+// Custom HTTP update functions
+async function checkForCustomUpdates() {
+  if (isDev) {
+    console.log('[CUSTOM-UPDATER] Skipping in development mode')
+    return
+  }
+
+  if (customUpdateState.checking) {
+    console.log('[CUSTOM-UPDATER] Check already in progress')
+    return
+  }
+
+  try {
+    customUpdateState.checking = true
+    console.log('[CUSTOM-UPDATER] Checking for updates via GitHub API...')
+    sendToRenderer('update-checking')
+
+    const currentVersion = app.getVersion()
+    console.log(`[CUSTOM-UPDATER] Current version: ${currentVersion}`)
+
+    // Get latest release from GitHub API
+    const releaseInfo = await fetchLatestRelease()
+    
+    if (!releaseInfo) {
+      throw new Error('Failed to fetch release info')
+    }
+
+    const latestVersion = releaseInfo.tag_name.replace('v', '')
+    console.log(`[CUSTOM-UPDATER] Latest version: ${latestVersion}`)
+
+    // Compare versions
+    if (compareVersions(latestVersion, currentVersion) > 0) {
+      // Update available!
+      const asset = releaseInfo.assets.find(asset => 
+        asset.name.includes('.exe') && asset.name.includes('Setup')
+      )
+
+      if (asset) {
+        customUpdateState.available = true
+        customUpdateState.version = latestVersion
+        customUpdateState.downloadUrl = asset.browser_download_url
+        
+        console.log(`[CUSTOM-UPDATER] Update available: ${latestVersion}`)
+        sendToRenderer('update-available', {
+          version: latestVersion,
+          releaseNotes: releaseInfo.body,
+          releaseName: releaseInfo.name,
+          releaseDate: releaseInfo.published_at,
+          downloadUrl: asset.browser_download_url,
+          fileSize: asset.size
+        })
+
+        // Auto-start download
+        setTimeout(() => startCustomUpdateDownload(), 2000)
+      } else {
+        throw new Error('No compatible installer found in release')
+      }
+    } else {
+      console.log('[CUSTOM-UPDATER] No updates available')
+      sendToRenderer('update-not-available', { currentVersion })
+    }
+
+  } catch (error) {
+    console.error('[CUSTOM-UPDATER] Check failed:', error.message)
+    sendToRenderer('update-error', { 
+      message: `Update check failed: ${error.message}`,
+      code: 'CUSTOM_CHECK_FAILED'
+    })
+  } finally {
+    customUpdateState.checking = false
+  }
+}
+
+// Fetch latest release from GitHub API
+function fetchLatestRelease() {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.github.com',
+      port: 443,
+      path: `/repos/${UPDATE_CONFIG.github.owner}/${UPDATE_CONFIG.github.repo}/releases/latest`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AIM-TRAINER-PRO/1.0.0',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    }
+
+    const req = https.request(options, (res) => {
+      let data = ''
+      
+      res.on('data', (chunk) => {
+        data += chunk
+      })
+      
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            const releaseInfo = JSON.parse(data)
+            resolve(releaseInfo)
+          } else {
+            reject(new Error(`GitHub API returned ${res.statusCode}: ${data}`))
+          }
+        } catch (error) {
+          reject(new Error(`Failed to parse GitHub API response: ${error.message}`))
+        }
+      })
+    })
+
+    req.on('error', (error) => {
+      reject(new Error(`Request failed: ${error.message}`))
+    })
+
+    req.setTimeout(15000, () => {
+      req.destroy()
+      reject(new Error('Request timeout'))
+    })
+
+    req.end()
+  })
+}
+
+// Download update file
+async function startCustomUpdateDownload() {
+  if (!customUpdateState.available || customUpdateState.downloading) {
+    return
+  }
+
+  try {
+    customUpdateState.downloading = true
+    console.log('[CUSTOM-UPDATER] Starting download...')
+    sendToRenderer('update-download-started')
+
+    // Ensure download directory exists
+    if (!fs.existsSync(UPDATE_CONFIG.downloadPath)) {
+      fs.mkdirSync(UPDATE_CONFIG.downloadPath, { recursive: true })
+    }
+
+    const fileName = `AIM-TRAINER-PRO-Setup-${customUpdateState.version}.exe`
+    const filePath = path.join(UPDATE_CONFIG.downloadPath, fileName)
+    
+    await downloadFile(customUpdateState.downloadUrl, filePath)
+    
+    customUpdateState.filePath = filePath
+    customUpdateState.downloading = false
+    
+    console.log(`[CUSTOM-UPDATER] Download completed: ${filePath}`)
+    sendToRenderer('update-downloaded', {
+      version: customUpdateState.version,
+      filePath: filePath
+    })
+
+    // Show install dialog
+    showCustomUpdateDialog()
+
+  } catch (error) {
+    console.error('[CUSTOM-UPDATER] Download failed:', error.message)
+    customUpdateState.downloading = false
+    sendToRenderer('update-error', { 
+      message: `Download failed: ${error.message}`,
+      code: 'CUSTOM_DOWNLOAD_FAILED'
+    })
+  }
+}
+
+// Download file with progress
+function downloadFile(url, filePath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(filePath)
+    let totalBytes = 0
+    let downloadedBytes = 0
+
+    const request = https.get(url, (response) => {
+      // Handle redirects
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        return downloadFile(response.headers.location, filePath).then(resolve).catch(reject)
+      }
+
+      if (response.statusCode !== 200) {
+        reject(new Error(`Download failed with status ${response.statusCode}`))
+        return
+      }
+
+      totalBytes = parseInt(response.headers['content-length'], 10) || 0
+
+      response.on('data', (chunk) => {
+        downloadedBytes += chunk.length
+        if (totalBytes > 0) {
+          const percent = Math.round((downloadedBytes / totalBytes) * 100)
+          sendToRenderer('update-download-progress', {
+            percent: percent,
+            bytesPerSecond: 0, // Could calculate this
+            total: totalBytes,
+            transferred: downloadedBytes
+          })
+        }
+      })
+
+      response.pipe(file)
+
+      file.on('finish', () => {
+        file.close()
+        resolve()
+      })
+
+      file.on('error', (error) => {
+        fs.unlink(filePath, () => {}) // Delete partial file
+        reject(error)
+      })
+    })
+
+    request.on('error', (error) => {
+      fs.unlink(filePath, () => {}) // Delete partial file
+      reject(error)
+    })
+
+    request.setTimeout(60000, () => {
+      request.destroy()
+      reject(new Error('Download timeout'))
+    })
+  })
+}
+
+// Show custom update dialog
+function showCustomUpdateDialog() {
+  const { dialog } = require('electron')
+  
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `AIM TRAINER PRO v${customUpdateState.version} is ready to install`,
+    detail: 'The application will close and the installer will launch. Your settings will be preserved.',
+    buttons: ['Install Now', 'Install Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then((response) => {
+    if (response.response === 0) {
+      installCustomUpdate()
+    }
+  })
+}
+
+// Install custom update
+function installCustomUpdate() {
+  try {
+    console.log('[CUSTOM-UPDATER] Installing update...')
+    
+    if (!customUpdateState.filePath || !fs.existsSync(customUpdateState.filePath)) {
+      throw new Error('Update file not found')
+    }
+
+    // Launch installer
+    const { spawn } = require('child_process')
+    spawn(customUpdateState.filePath, [], { 
+      detached: true,
+      stdio: 'ignore'
+    })
+
+    // Quit application
+    setTimeout(() => {
+      app.quit()
+    }, 1000)
+
+  } catch (error) {
+    console.error('[CUSTOM-UPDATER] Install failed:', error.message)
+    sendToRenderer('update-error', { 
+      message: `Install failed: ${error.message}`,
+      code: 'CUSTOM_INSTALL_FAILED'
+    })
+  }
+}
+
+// Compare version strings (semver-like)
+function compareVersions(version1, version2) {
+  const v1parts = version1.split('.').map(Number)
+  const v2parts = version2.split('.').map(Number)
+  
+  for (let i = 0; i < Math.max(v1parts.length, v2parts.length); i++) {
+    const v1part = v1parts[i] || 0
+    const v2part = v2parts[i] || 0
+    
+    if (v1part > v2part) return 1
+    if (v1part < v2part) return -1
+  }
+  
+  return 0
+}
+
+// IPC handlers for custom updater
+function setupCustomUpdateIPC() {
+  ipcMain.handle('custom-check-for-updates', () => {
+    checkForCustomUpdates()
+  })
+
+  ipcMain.handle('custom-download-update', () => {
+    if (customUpdateState.available) {
+      startCustomUpdateDownload()
+    }
+  })
+
+  ipcMain.handle('custom-install-update', () => {
+    installCustomUpdate()
+  })
+
+  console.log('[CUSTOM-UPDATER] IPC handlers registered')
+}
+
+// Initialize custom update system
+function initializeCustomUpdater() {
+  console.log('[CUSTOM-UPDATER] Initializing custom HTTP update system...')
+  
+  // Setup IPC handlers
+  setupCustomUpdateIPC()
+  
+  // Start periodic checks (only in production)
+  if (!isDev) {
+    setTimeout(() => {
+      checkForCustomUpdates()
+    }, 5000) // First check after 5 seconds
+    
+    setInterval(() => {
+      checkForCustomUpdates()
+    }, UPDATE_CONFIG.checkInterval)
+  }
+  
+  console.log('[CUSTOM-UPDATER] Custom update system initialized')
+}
+
 // Enable live reload for Electron in development
 if (isDev) {
   try {
@@ -1044,9 +1399,9 @@ function startBackendServer() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  // Initialize modern auto-updater system
-  initializeAutoUpdater()
-  
+  // Initialize CUSTOM HTTP update system (more reliable than electron-updater)
+  initializeCustomUpdater()
+
   // Create splash screen for production
   if (!isDev) {
     createSplashWindow()
