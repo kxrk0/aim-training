@@ -25,8 +25,8 @@ class ApiService {
       return 'https://myaimtrainer.loca.lt/api'  // Use tunnel URL for API too
     }
     
-    // Development fallback
-    return (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api'
+    // Default to VPS
+    return (import.meta as any).env.VITE_API_URL || 'https://aim.liorabelleleather.com/api'
   }
 
   constructor() {

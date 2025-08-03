@@ -101,6 +101,13 @@ A modern, high-performance web-based aim training application designed for FPS p
 - **ESLint & Prettier** - Code quality and formatting
 - **TypeScript** - Static type checking
 
+### Desktop Application
+- **Electron** - Cross-platform desktop app framework
+- **electron-builder** - Application packaging and installer creation
+- **NSIS** - Windows installer with uninstaller support
+- **Auto-updater** - Automatic application updates
+- **VPS Integration** - Production server connectivity
+
 ## 📁 Project Structure
 
 ```
@@ -139,10 +146,21 @@ aim-training-3D/
 ├── shared/                     # ✅ Shared types and utilities
 │   ├── types/                # ✅ Comprehensive TypeScript definitions
 │   └── utils/                # ✅ Shared utility functions
+├── electron/                   # ✅ Desktop application
+│   ├── main.js               # ✅ Electron main process
+│   ├── preload.js            # ✅ Preload scripts
+│   ├── renderer.js           # ✅ Renderer utilities
+│   └── package.json          # ✅ Electron dependencies
+├── assets/                     # ✅ Application icons and resources
+│   ├── icon.ico              # ✅ Windows icon
+│   ├── icon.icns             # ✅ macOS icon
+│   └── entitlements.mac.plist # ✅ macOS entitlements
+├── dist-electron-debug/        # ✅ Electron build output
 ├── docs/                      # Documentation
 ├── docker-compose.yml         # ✅ Development environment
 ├── redis.conf                 # ✅ Redis configuration
 ├── .env.example              # ✅ Environment template
+├── package.json              # ✅ Root package with Electron scripts
 └── README.md
 ```
 
@@ -200,6 +218,12 @@ npm run docker:up       # Start PostgreSQL & Redis containers
 npm run docker:down     # Stop containers
 npm run db:push         # Update database schema
 npm run db:studio       # Open Prisma Studio
+
+# Desktop Application (Electron)
+npm run electron        # Run Electron app in development
+npm run electron:dev    # Start dev servers + Electron
+npm run electron:pack   # Build and package desktop app
+npm run electron:dist   # Create distribution installer
 ```
 
 ## 🔧 Configuration
@@ -255,7 +279,7 @@ VITE_ENABLE_PERFORMANCE_MONITORING="true"
 - **Party Size**: Up to 8 players per party
 - **Tournament Scale**: Up to 64 players per tournament
 
-## 🎯 Current Status: **Production Ready Beta 1.3**
+## 🎯 Current Status: **Production Ready Desktop Beta 1.4**
 
 ### ✅ **Fully Working Features (As of January 2025)**
 - 🎮 Complete FPS training environment with 4 game modes
@@ -277,6 +301,7 @@ VITE_ENABLE_PERFORMANCE_MONITORING="true"
 - 🤖 **AI Prediction Tracking** with machine learning-based movement prediction
 - 👁️ **Spectator Mode** with real-time viewing, camera controls, and spectator chat
 - 👥 **Team Challenge System** with 4 challenge types and team objectives
+- 🖥️ **Desktop Application** with Electron, native performance, and VPS integration
 
 ### 🚀 **Public Launch Ready**
 - ✅ All core systems implemented and tested
@@ -469,10 +494,18 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 🎯 **Current Version: Beta 1.4 (January 2025)**
-**🚀 Publicly Accessible FPS Aim Trainer with Complete Tournament & Ranking Systems**
+## 🎯 **Current Version: Desktop Beta 1.5 (January 2025)**
+**🖥️ Complete Desktop Application with VPS Integration & Production-Ready Electron Build**
 
-### **What's New in Beta 1.4:**
+### **What's New in Desktop Beta 1.5:**
+- ✅ **Electron Desktop Application**: Complete standalone desktop app with native performance and professional UI
+- ✅ **VPS Network Integration**: All multiplayer features connected to production VPS server (aim.liorabelleleather.com)
+- ✅ **Authentication System**: Fixed guest mode conflicts, proper Google OAuth integration, seamless login/logout flow
+- ✅ **HashRouter Implementation**: Resolved Electron rendering issues with proper file:// protocol support
+- ✅ **Desktop Installer**: Production-ready NSIS installer for Windows x64 with uninstaller support
+- ✅ **Connection Status UI**: Real-time VPS connection indicators and desktop-specific status displays
+
+### **What was in Beta 1.4:**
 - ✅ **Complete Tournament Creation System**: 5-step tournament wizard with bracket preview and multiple formats
 - ✅ **Skill-based Competition Divisions**: 6-tier division system (Bronze to Master) with MMR tracking and placement matches
 - ✅ **Season Ranking System**: Comprehensive season pass with progressive rewards, challenges, and leaderboards
@@ -522,12 +555,13 @@ MIT License - see LICENSE file for details
 - ✅ **Cross-game Sensitivity Conversion**: Support for popular FPS games
 
 ### **🔢 Project Statistics:**
-- **📝 Lines of Code**: 18,000+ TypeScript/React
-- **🔧 Components**: 65+ React components
-- **⚡ API Endpoints**: 30+ RESTful endpoints
-- **🔄 Socket Events**: 30+ real-time events
-- **📊 Type Definitions**: 120+ TypeScript interfaces
+- **📝 Lines of Code**: 20,000+ TypeScript/React/Electron
+- **🔧 Components**: 70+ React components
+- **⚡ API Endpoints**: 35+ RESTful endpoints
+- **🔄 Socket Events**: 35+ real-time events
+- **📊 Type Definitions**: 130+ TypeScript interfaces
 - **🎯 Sensitivity Tests**: 4 professional test modules
+- **🖥️ Desktop Platforms**: Windows, macOS, Linux support
 - **⏱️ Development Time**: Professional development sprint
 
 **Ready to dominate the competition? Join thousands of players improving their aim every day! 🎮**
@@ -535,7 +569,8 @@ MIT License - see LICENSE file for details
 ---
 
 ### 🔗 **Quick Links**
-- **🎯 Play Now**: [Launch Training](http://localhost:3000)
+- **🖥️ Desktop App**: Download and run AIM TRAINER PRO.exe (Windows)
+- **🎯 Play Now**: [Launch Training](http://localhost:3000) (Web Version)
 - **📊 Statistics**: Track your improvement journey
 - **🏆 Tournaments**: Compete for prizes and glory
 - **⚔️ 1v1 Battles**: Challenge skilled players

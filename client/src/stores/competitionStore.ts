@@ -46,7 +46,7 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
           (typeof window !== 'undefined' && (window as any).electronAPI)) {
         return 'https://aim.liorabelleleather.com'
       }
-      return undefined // Use default (current domain)
+      return 'https://aim.liorabelleleather.com' // Default to VPS
     }
     
     const socket = io(getSocketUrl())
@@ -72,7 +72,7 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
           (typeof window !== 'undefined' && (window as any).electronAPI)) {
         return 'https://aim.liorabelleleather.com'
       }
-      return undefined // Use default (current domain)
+      return 'https://aim.liorabelleleather.com' // Default to VPS
     }
     
     const socket = io(getSocketUrl())
@@ -93,7 +93,7 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
           (typeof window !== 'undefined' && (window as any).electronAPI)) {
         return 'https://aim.liorabelleleather.com'
       }
-      return undefined // Use default (current domain)
+      return 'https://aim.liorabelleleather.com' // Default to VPS
     }
     
     const socket = io(getSocketUrl())
@@ -119,7 +119,7 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
           (typeof window !== 'undefined' && (window as any).electronAPI)) {
         return 'https://aim.liorabelleleather.com'
       }
-      return undefined // Use default (current domain)
+      return 'https://aim.liorabelleleather.com' // Default to VPS
     }
     
     const socket = io(getSocketUrl())
@@ -140,7 +140,7 @@ export const useCompetitionStore = create<CompetitionStore>((set, get) => ({
           (typeof window !== 'undefined' && (window as any).electronAPI)) {
         return 'https://aim.liorabelleleather.com'
       }
-      return undefined // Use default (current domain)
+      return 'https://aim.liorabelleleather.com' // Default to VPS
     }
     
     const socket = io(getSocketUrl())

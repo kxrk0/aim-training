@@ -109,7 +109,7 @@ export const useSpectatorStore = create<SpectatorStoreState>()(
           console.log('🖥️ Spectator: Desktop app detected - connecting to VPS')
           return 'https://aim.liorabelleleather.com'
         }
-        return 'http://localhost:3001' // Development
+        return 'https://aim.liorabelleleather.com' // Default to VPS
       }
 
       const newSocket = io(getSocketUrl(), {

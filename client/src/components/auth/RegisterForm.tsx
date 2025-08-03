@@ -47,7 +47,7 @@ export const RegisterForm: React.FC = () => {
   }
 
   const handleOAuthLogin = (provider: 'google' | 'steam') => {
-    const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api'
+    const apiUrl = (import.meta as any).env.VITE_API_URL || 'https://aim.liorabelleleather.com/api'
     window.location.href = `${apiUrl}/auth/${provider}`
   }
 

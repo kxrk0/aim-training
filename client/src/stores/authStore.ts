@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, subscribeWithSelector } from 'zustand/middleware'
 import { apiService } from '../services/api'
-import { firebaseAuth } from '../services/firebase'
+import { firebaseAuth, auth } from '../services/firebase'
 import type { User as FirebaseUser } from 'firebase/auth'
 
 interface User {
@@ -37,7 +37,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  authProvider: 'backend' | 'firebase' | 'guest' | null
+  authProvider: 'backend' | 'firebase' | 'guest' | 'logged_out' | null
 }
 
 interface AuthActions {
@@ -49,6 +49,7 @@ interface AuthActions {
   loginWithFirebaseEmail: (email: string, password: string) => Promise<void>
   registerWithFirebaseEmail: (email: string, password: string, username: string) => Promise<void>
   loginWithFirebaseGoogle: () => Promise<void>
+  handleGoogleRedirect: () => Promise<any>
   
   // Common actions
   logout: () => void
@@ -145,9 +146,14 @@ export const useAuthStore = create<AuthStore>()(
               token: null,
               firebaseUser: null,
               isAuthenticated: false,
-              authProvider: null,
+              authProvider: 'logged_out', // Mark as manually logged out
               error: null
             })
+            
+            // Reset logged_out status after a brief moment to allow navigation
+            setTimeout(() => {
+              set({ authProvider: null })
+            }, 100)
           } catch (error) {
             console.error('Logout error:', error)
             // Force logout even if there's an error
@@ -156,9 +162,14 @@ export const useAuthStore = create<AuthStore>()(
               token: null,
               firebaseUser: null,
               isAuthenticated: false,
-              authProvider: null,
+              authProvider: 'logged_out', // Mark as manually logged out
               error: null
             })
+            
+            // Reset logged_out status after a brief moment to allow navigation
+            setTimeout(() => {
+              set({ authProvider: null })
+            }, 100)
           }
         },
 
@@ -267,9 +278,61 @@ export const useAuthStore = create<AuthStore>()(
              })
              // Sync Firebase user with backend
              await get().syncFirebaseUser(firebaseUser)
+                 } catch (error: any) {
+        // Handle VPS redirect flow for Electron
+        if (error.message === 'AUTH_VPS_REDIRECT') {
+          console.log('🔄 Google authentication opened in browser...')
+          set({ isLoading: false, error: 'Complete authentication in browser...' })
+          
+          // Start polling for auth state change
+          const pollAuth = setInterval(() => {
+            const currentUser = auth.currentUser
+            if (currentUser) {
+              console.log('✅ User authenticated via external browser')
+              clearInterval(pollAuth)
+              set({ 
+                firebaseUser: currentUser, 
+                isAuthenticated: true, 
+                isLoading: false,
+                authProvider: 'firebase',
+                error: null
+              })
+            }
+          }, 2000) // Check every 2 seconds
+          
+          return // Don't throw error for redirect
+        }
+        
+        set({
+          error: error.message || 'Firebase Google login failed',
+          isLoading: false
+        })
+        throw error
+      }
+         },
+
+         // Handle redirect result (for Electron)
+         handleGoogleRedirect: async () => {
+           set({ isLoading: true, error: null })
+           try {
+             const firebaseUser = await firebaseAuth.handleRedirectResult()
+             if (firebaseUser) {
+               set({ 
+                 firebaseUser, 
+                 isAuthenticated: true, 
+                 isLoading: false,
+                 authProvider: 'firebase'
+               })
+               // Sync Firebase user with backend
+               await get().syncFirebaseUser(firebaseUser)
+               return firebaseUser
+             } else {
+               set({ isLoading: false })
+               return null
+             }
            } catch (error: any) {
              set({
-               error: error.message || 'Firebase Google login failed',
+               error: error.message || 'Google redirect authentication failed',
                isLoading: false
              })
              throw error

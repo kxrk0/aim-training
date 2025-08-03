@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { HomePage } from '@/pages/HomePage'
 import { GamePage } from '@/pages/GamePage'
@@ -53,9 +53,11 @@ function App() {
   // Initialize Firebase authentication state monitoring
   useFirebaseAuth()
   
-  const { enableGuestMode, isAuthenticated } = useAuthStore()
+  const { enableGuestMode, isAuthenticated, authProvider, handleGoogleRedirect } = useAuthStore()
   const [loadingStage, setLoadingStage] = useState(0)
   const [isAppReady, setIsAppReady] = useState(false)
+  const [hasTriedGuestMode, setHasTriedGuestMode] = useState(false)
+  const [shouldRedirectToLogin, setShouldRedirectToLogin] = useState(false)
 
   // Progressive loading simulation
   useEffect(() => {
@@ -78,7 +80,30 @@ function App() {
     return () => clearInterval(loadingInterval)
   }, [])
   
-  // Auto-enable guest mode for Electron
+  // Auto-enable guest mode for Electron (only on first launch)
+  useEffect(() => {
+    const isElectron = window.location.protocol === 'file:' || 
+                     window.location.origin === 'file://' || 
+                     window.location.hostname === '' || 
+                     (typeof window !== 'undefined' && (window as any).electronAPI)
+    
+    // Only enable guest mode if:
+    // 1. Running in Electron
+    // 2. Not authenticated 
+    // 3. No auth provider set (fresh start, not after logout)
+    // 4. Haven't tried guest mode before
+    if (isElectron && !isAuthenticated && !authProvider && !hasTriedGuestMode) {
+      console.log('🖥️ Electron detected - enabling guest mode (first launch)')
+      setHasTriedGuestMode(true)
+      
+      // Delay guest mode activation for loading animation
+      setTimeout(() => {
+        enableGuestMode()
+      }, 2000)
+    }
+  }, [enableGuestMode, isAuthenticated, authProvider, hasTriedGuestMode])
+
+  // Handle Google redirect result on app load (for Electron)
   useEffect(() => {
     const isElectron = window.location.protocol === 'file:' || 
                      window.location.origin === 'file://' || 
@@ -86,14 +111,22 @@ function App() {
                      (typeof window !== 'undefined' && (window as any).electronAPI)
     
     if (isElectron && !isAuthenticated) {
-      console.log('🖥️ Electron detected - enabling guest mode')
-      
-      // Delay guest mode activation for loading animation
-      setTimeout(() => {
-        enableGuestMode()
-      }, 2000)
+      console.log('🔍 Checking for Google redirect result...')
+      handleGoogleRedirect().catch(error => {
+        console.log('ℹ️ No redirect result or error:', error.message)
+      })
     }
-  }, [enableGuestMode, isAuthenticated])
+  }, [handleGoogleRedirect, isAuthenticated])
+
+  // Handle logout detection and redirection
+  useEffect(() => {
+    if (authProvider === 'logged_out') {
+      console.log('🚪 User logged out - preparing redirect to login')
+      setShouldRedirectToLogin(true)
+    } else if (isAuthenticated) {
+      setShouldRedirectToLogin(false)
+    }
+  }, [authProvider, isAuthenticated])
   
   // Handle loading screen removal with smooth transition
   useEffect(() => {
@@ -158,12 +191,7 @@ function App() {
   }, [isAuthenticated, loadingStage])
   
   // Conditional rendering to ensure proper visibility
-  console.log('🚀 App render state:', { isAuthenticated, isAppReady, loadingStage })
-  
-  // Don't render anything until app is ready
-  if (!isAuthenticated) {
-    return null
-  }
+  console.log('🚀 App render state:', { isAuthenticated, isAppReady, loadingStage, authProvider })
   
   return (
     <div style={{ 
@@ -176,44 +204,54 @@ function App() {
     }}>
       <Router>
         <Routes>
-          {/* Authentication Routes - Without Layout */}
+          {/* Authentication Routes - Always Available */}
           <Route path="/auth" element={<AuthSelector />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/register" element={<RegisterForm />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           
-          {/* Main App Routes - With Layout */}
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
-            <Route path="train" element={<GamePage />} />
-            <Route path="training-hub" element={<TrainingHubPage />} />
-            <Route path="leaderboard" element={<LeaderboardPage />} />
-            <Route path="achievements" element={<AchievementsPage />} />
-            <Route path="advanced-flick-training" element={<AdvancedFlickTraining />} />
-            <Route path="ai-prediction-training" element={<AIPredictionTraining />} />
-            <Route path="party" element={<PartyLobby />} />
-            <Route path="party/:inviteCode" element={<PartyLobby />} />
-            <Route path="party-game/:partyId" element={<PartyGamePage />} />
-            <Route path="spectate/:partyId" element={<SpectatorViewer partyId="" onExit={() => {}} />} />
-            <Route path="profile" element={<ProfilePage />} />
-              <Route path="xp-demo" element={<XPDemoPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+          {/* Logout Redirect - Handle logout state */}
+          {shouldRedirectToLogin && (
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          )}
+          
+          {/* Main App Routes - Require Authentication */}
+          {isAuthenticated && !shouldRedirectToLogin ? (
+            <Route path="/" element={<Layout />}>
+              <Route index element={<HomePage />} />
+              <Route path="train" element={<GamePage />} />
+              <Route path="training-hub" element={<TrainingHubPage />} />
+              <Route path="leaderboard" element={<LeaderboardPage />} />
+              <Route path="achievements" element={<AchievementsPage />} />
+              <Route path="advanced-flick-training" element={<AdvancedFlickTraining />} />
+              <Route path="ai-prediction-training" element={<AIPredictionTraining />} />
+              <Route path="party" element={<PartyLobby />} />
+              <Route path="party/:inviteCode" element={<PartyLobby />} />
+              <Route path="party-game/:partyId" element={<PartyGamePage />} />
+              <Route path="spectate/:partyId" element={<SpectatorViewer partyId="" onExit={() => {}} />} />
+              <Route path="profile" element={<ProfilePage />} />
+                <Route path="xp-demo" element={<XPDemoPage />} />
+              <Route path="settings" element={<SettingsPage />} />
 
-            <Route path="competition" element={<CompetitionMatchmaking />} />
-            <Route path="tournaments" element={<TournamentPage />} />
-            <Route path="seasons" element={<SeasonPage />} />
+              <Route path="competition" element={<CompetitionMatchmaking />} />
+              <Route path="tournaments" element={<TournamentPage />} />
+              <Route path="seasons" element={<SeasonPage />} />
 
-            
-            {/* Phase 8 Advanced Features */}
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="adaptive-training" element={<AdaptiveTraining />} />
+              
+              {/* Phase 8 Advanced Features */}
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="adaptive-training" element={<AdaptiveTraining />} />
 
-            <Route path="hardware" element={<HardwareOptimization />} />
-            <Route path="replay" element={<ReplaySystem />} />
-            <Route path="guilds" element={<TrainingGuilds />} />
-            <Route path="custom-training" element={<CustomTraining />} />
-            <Route path="social" element={<SocialFeatures />} />
-          </Route>
+              <Route path="hardware" element={<HardwareOptimization />} />
+              <Route path="replay" element={<ReplaySystem />} />
+              <Route path="guilds" element={<TrainingGuilds />} />
+              <Route path="custom-training" element={<CustomTraining />} />
+              <Route path="social" element={<SocialFeatures />} />
+            </Route>
+          ) : !shouldRedirectToLogin ? (
+            // Default to login if not authenticated and not redirecting
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          ) : null}
         </Routes>
       </Router>
     </div>

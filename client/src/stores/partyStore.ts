@@ -125,7 +125,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return 'http://localhost:3001'  // Direct localhost connection
       }
-      return (import.meta as any).env.VITE_WS_URL || 'http://localhost:3001'
+      return (import.meta as any).env.VITE_WS_URL || 'https://aim.liorabelleleather.com'
     }
 
     const wsUrl = getWebSocketUrl()

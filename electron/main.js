@@ -3,6 +3,8 @@ const { autoUpdater } = require('electron-updater')
 const { spawn } = require('child_process')
 const path = require('path')
 const fs = require('fs')
+const http = require('http')
+const url = require('url')
 
 // Safe require for electron-is-dev
 let isDev = false
@@ -17,8 +19,33 @@ try {
 let mainWindow
 let serverProcess
 let splashWindow
+let clientServer
+let clientPort = 3000
+
+// Simple MIME type helper
+function getMimeType(filename) {
+  const ext = path.extname(filename).toLowerCase()
+  const mimeTypes = {
+    '.html': 'text/html',
+    '.js': 'application/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject'
+  }
+  return mimeTypes[ext] || 'application/octet-stream'
+}
 
 // Configure auto-updater
+autoUpdater.autoDownload = true
+autoUpdater.autoInstallOnAppQuit = true
 autoUpdater.checkForUpdatesAndNotify()
 
 // Auto-updater events
@@ -194,6 +221,94 @@ function createSplashWindow() {
   return splashWindow
 }
 
+function startClientServer() {
+  return new Promise((resolve, reject) => {
+    const clientPath = path.join(__dirname, '../client/dist')
+    console.log('Starting client server from:', clientPath)
+    
+    if (!fs.existsSync(clientPath)) {
+      console.error('Client dist directory not found:', clientPath)
+      reject(new Error('Client files not found'))
+      return
+    }
+    
+    clientServer = http.createServer((req, res) => {
+      // Add CORS headers for Firebase compatibility
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      
+      // Handle preflight requests
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200)
+        res.end()
+        return
+      }
+      
+      let pathname = url.parse(req.url).pathname
+      
+      // Handle root path and SPA routing
+      if (pathname === '/' || !path.extname(pathname)) {
+        pathname = '/index.html'
+      }
+      
+      const filePath = path.join(clientPath, pathname)
+      
+      // Security check - ensure file is within client directory
+      if (!filePath.startsWith(clientPath)) {
+        res.writeHead(403)
+        res.end('Forbidden')
+        return
+      }
+      
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          // For SPA routing, fallback to index.html
+          if (err.code === 'ENOENT' && !pathname.includes('.')) {
+            fs.readFile(path.join(clientPath, 'index.html'), (indexErr, indexData) => {
+              if (indexErr) {
+                res.writeHead(404)
+                res.end('File not found')
+              } else {
+                res.writeHead(200, { 'Content-Type': 'text/html' })
+                res.end(indexData)
+              }
+            })
+          } else {
+            res.writeHead(404)
+            res.end('File not found')
+          }
+        } else {
+          const mimeType = getMimeType(filePath)
+          res.writeHead(200, { 'Content-Type': mimeType })
+          res.end(data)
+        }
+      })
+    })
+    
+    // Find available port
+    const tryPort = (port) => {
+      clientServer.listen(port, 'localhost', () => {
+        clientPort = port
+        console.log(`✅ Client server started on http://localhost:${port}`)
+        resolve(port)
+      })
+      
+      clientServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.log(`Port ${port} in use, trying ${port + 1}`)
+          clientServer.close()
+          tryPort(port + 1)
+        } else {
+          reject(err)
+        }
+      })
+    }
+    
+    tryPort(clientPort)
+  })
+}
+
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width, height } = primaryDisplay.workAreaSize
@@ -227,38 +342,13 @@ function createWindow() {
   if (isDev) {
     startUrl = 'http://localhost:3000'
   } else {
-    // In production, client files are in the asar or resources
+    // In production, serve client directly from build
     const clientPath = path.join(__dirname, '../client/dist/index.html')
-    console.log('Checking client path:', clientPath, 'exists:', fs.existsSync(clientPath))
-    
     if (fs.existsSync(clientPath)) {
       startUrl = `file://${clientPath}`
     } else {
-      // Fallback to a simple loading page if client not found
-      console.log('Client files not found, creating fallback loading page')
-      const fallbackHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>AIM TRAINER PRO</title>
-          <style>
-            body { 
-              margin: 0; padding: 0; 
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white; font-family: Arial, sans-serif;
-              display: flex; justify-content: center; align-items: center; height: 100vh;
-            }
-          </style>
-        </head>
-        <body>
-          <div>
-            <h1>🎯 AIM TRAINER PRO</h1>
-            <p>Initializing Desktop Experience...</p>
-          </div>
-        </body>
-        </html>
-      `
-      startUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(fallbackHTML)
+      console.error('Client build not found:', clientPath)
+      startUrl = 'https://aim.liorabelleleather.com' // Fallback to VPS
     }
   }
   
@@ -283,27 +373,33 @@ function createWindow() {
   
   mainWindow.loadURL(startUrl)
 
-  // Show window when ready to prevent visual flash
-  mainWindow.once('ready-to-show', () => {
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.close()
-    }
-    
-    mainWindow.show()
-    
-    // Always open DevTools in production for debugging startup issues
-    mainWindow.webContents.openDevTools()
-    
-    if (isDev) {
-      // Additional dev tools settings for development
-    }
+  // Wait for page to fully load before showing
+  mainWindow.webContents.once('did-finish-load', () => {
+    // Wait a bit more to ensure React app is rendered
+    setTimeout(() => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close()
+      }
+      
+      mainWindow.show()
+      
+      // Only open DevTools in development
+      if (isDev) {
+        mainWindow.webContents.openDevTools()
+      }
 
-    // Check for updates after window is shown (production only)
+          // Check for updates after window is shown (production only)
     if (!isDev) {
       setTimeout(() => {
         autoUpdater.checkForUpdatesAndNotify()
       }, 3000)
+      
+      // Set up periodic update checks (every 4 hours)
+      setInterval(() => {
+        autoUpdater.checkForUpdatesAndNotify()
+      }, 4 * 60 * 60 * 1000)
     }
+    }, 1000)
   })
 
   // Handle window closed
@@ -365,14 +461,33 @@ function createMenu() {
         { type: 'separator' },
         {
           label: 'Check for Updates',
-          click: () => {
+          click: async () => {
             if (!isDev) {
-              autoUpdater.checkForUpdatesAndNotify()
+              try {
+                const result = await autoUpdater.checkForUpdates()
+                if (!result) {
+                  dialog.showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: 'No Updates',
+                    message: 'You are running the latest version of AIM TRAINER PRO.',
+                    buttons: ['OK']
+                  })
+                }
+              } catch (error) {
+                dialog.showMessageBox(mainWindow, {
+                  type: 'error',
+                  title: 'Update Check Failed',
+                  message: 'Unable to check for updates. Please try again later.',
+                  detail: error.message,
+                  buttons: ['OK']
+                })
+              }
             } else {
               dialog.showMessageBox(mainWindow, {
                 type: 'info',
                 title: 'Updates',
-                message: 'Update checking is disabled in development mode.'
+                message: 'Update checking is disabled in development mode.',
+                buttons: ['OK']
               })
             }
           }
@@ -595,8 +710,10 @@ function startBackendServer() {
   }
 }
 
+// No custom protocol needed - use Firebase web flow
+
 // App event handlers
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Create splash screen
   if (!isDev) {
     createSplashWindow()
@@ -605,7 +722,7 @@ app.whenReady().then(() => {
   // VPS Backend kullanıyoruz - local server başlatma gerekmiyor
   // startBackendServer()
   
-  // Create main window - VPS backend hazır olduğu için bekleme gereksiz
+  // Create main window - No HTTP server needed
   setTimeout(() => {
     createWindow()
   }, isDev ? 0 : 500)
@@ -624,17 +741,14 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
-  // VPS Backend kullanıyoruz - local server cleanup gereksiz
-  // if (serverProcess && !serverProcess.killed) {
-  //   serverProcess.kill('SIGTERM')
-  //   
-  //   // Give server time to gracefully shut down
-  //   setTimeout(() => {
-  //     if (!serverProcess.killed) {
-  //       serverProcess.kill('SIGKILL')
-  //     }
-  //   }, 5000)
-  // }
+  // Close client HTTP server
+  if (clientServer) {
+    console.log('🔄 Closing client HTTP server...')
+    clientServer.close(() => {
+      console.log('✅ Client HTTP server closed')
+    })
+  }
+  console.log('🔄 Application shutting down...')
 })
 
 // IPC handlers
@@ -685,6 +799,10 @@ ipcMain.handle('check-for-updates', () => {
 ipcMain.handle('restart-app', () => {
   app.relaunch()
   app.exit()
+})
+
+ipcMain.handle('open-external', (event, url) => {
+  shell.openExternal(url)
 })
 
 // Security: Set Content Security Policy

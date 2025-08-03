@@ -51,6 +51,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App control
   restartApp: () => ipcRenderer.invoke('restart-app'),
 
+  // External links
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
   // Platform info
   platform: process.platform,
   isWindows: process.platform === 'win32',

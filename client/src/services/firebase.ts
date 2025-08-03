@@ -4,6 +4,8 @@ import { getAnalytics } from "firebase/analytics";
 import { 
   getAuth, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -51,10 +53,53 @@ export class FirebaseAuthService {
     return userCredential.user;
   }
 
-  // Google OAuth
+  // Google OAuth - Electron VPS redirect
   async loginWithGoogle(): Promise<FirebaseUser> {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
+    // Detect if running in Electron
+    const isElectron = window.location.protocol === 'file:' || 
+                     window.location.origin === 'file://' || 
+                     window.location.hostname === '' || 
+                     (typeof window !== 'undefined' && (window as any).electronAPI);
+    
+    if (isElectron) {
+      console.log('🖥️ Electron detected - using VPS auth endpoint');
+      
+      // Use VPS auth endpoint for Google OAuth
+      const authUrl = 'https://aim.liorabelleleather.com/api/auth/google?electron=true';
+      
+      // Open in system browser
+      if (window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(authUrl);
+      } else {
+        window.open(authUrl, '_blank');
+      }
+      
+      // Show message to user
+      alert('🔐 Google authentication opened in your browser.\nComplete the login and return to this app.');
+      
+      // Return pending (app will check auth state)
+      throw new Error('AUTH_VPS_REDIRECT'); 
+    } else {
+      console.log('🌐 Web environment - using popup flow for Google auth');
+      // For web, use popup flow
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
+    }
+  }
+
+  // Handle redirect result (for Electron)
+  async handleRedirectResult(): Promise<FirebaseUser | null> {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result) {
+        console.log('✅ Google redirect authentication successful');
+        return result.user;
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Redirect result error:', error);
+      throw error;
+    }
   }
 
   // Sign out

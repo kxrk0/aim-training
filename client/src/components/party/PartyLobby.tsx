@@ -52,6 +52,49 @@ export function PartyLobby() {
     }
   })
 
+  // Helper functions for connection status
+  const getConnectionType = () => {
+    const protocol = window.location.protocol
+    const hostname = window.location.hostname
+    const origin = window.location.origin
+    
+    // Desktop app (Electron)
+    if (protocol === 'file:' || 
+        origin === 'file://' || 
+        hostname === '' || 
+        hostname === 'file' ||
+        (typeof window !== 'undefined' && (window as any).electronAPI)) {
+      return 'VPS Server'
+    }
+    
+    if (hostname === 'myaimtrainer.loca.lt') {
+      return 'Localtunnel'
+    }
+    
+    return 'Localhost'
+  }
+
+  const getConnectionDescription = () => {
+    const protocol = window.location.protocol
+    const hostname = window.location.hostname
+    const origin = window.location.origin
+    
+    // Desktop app (Electron)
+    if (protocol === 'file:' || 
+        origin === 'file://' || 
+        hostname === '' || 
+        hostname === 'file' ||
+        (typeof window !== 'undefined' && (window as any).electronAPI)) {
+      return <span>🖥️ Desktop App (aim.liorabelleleather.com)</span>
+    }
+    
+    if (hostname === 'myaimtrainer.loca.lt') {
+      return <span>🌐 Using Localtunnel (Polling Transport)</span>
+    }
+    
+    return <span>🏠 Using Localhost (WebSocket Transport)</span>
+  }
+
   // Auto-join if invite code in URL
   useEffect(() => {
     if (urlInviteCode && !isInParty && isConnected && isAuthenticated) {
@@ -587,7 +630,7 @@ export function PartyLobby() {
             <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
             <span className="text-sm text-gray-400">
               {isConnected ? 
-                `Connected to party server (${window.location.hostname === 'myaimtrainer.loca.lt' ? 'Localtunnel' : 'Localhost'})` : 
+                `Connected to party server (${getConnectionType()})` : 
                 'Connecting to party server...'
               }
             </span>
@@ -595,11 +638,7 @@ export function PartyLobby() {
           
           {/* Connection Info */}
           <div className="mt-2 text-xs text-gray-500">
-            {window.location.hostname === 'myaimtrainer.loca.lt' ? (
-              <span>🌐 Using Localtunnel (Polling Transport)</span>
-            ) : (
-              <span>🏠 Using Localhost (WebSocket Transport)</span>
-            )}
+            {getConnectionDescription()}
           </div>
           
           {/* Localhost Test Button */}

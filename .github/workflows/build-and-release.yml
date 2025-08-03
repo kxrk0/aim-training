@@ -1,0 +1,90 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.1)'
+        required: true
+        default: '1.0.1'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install client dependencies
+      run: |
+        cd client
+        npm ci
+        
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm ci
+        
+    - name: Build application
+      run: npm run build
+      
+    - name: Set version from input
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        npm version ${{ github.event.inputs.version }} --no-git-tag-version
+        
+    - name: Build Electron app
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: npm run electron:dist
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: electron-builds
+        path: |
+          dist-electron-debug/*.exe
+          dist-electron-debug/*.zip
+          dist-electron-debug/*.yml
+          
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.version || github.ref_name }}
+        name: AIM TRAINER PRO ${{ github.event.inputs.version || github.ref_name }}
+        draft: false
+        prerelease: false
+        files: |
+          dist-electron-debug/*.exe
+          dist-electron-debug/*.yml
+        body: |
+          ## 🎯 AIM TRAINER PRO Desktop Edition
+          
+          ### 🔧 What's New:
+          - Enhanced performance and stability
+          - Bug fixes and improvements
+          - Latest features from web version
+          
+          ### 📥 Installation:
+          1. Download `AIM TRAINER PRO Setup ${{ github.event.inputs.version || github.ref_name }}.exe`
+          2. Run the installer
+          3. Enjoy professional aim training!
+          
+          ### 🔄 Auto-Update:
+          The app will automatically check for updates and notify you when new versions are available.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

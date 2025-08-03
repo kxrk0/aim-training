@@ -27,6 +27,9 @@ interface ElectronAPI {
   // App control
   restartApp: () => Promise<void>
 
+  // External links
+  openExternal: (url: string) => Promise<void>
+
   // Platform info
   platform: string
   isWindows: boolean
