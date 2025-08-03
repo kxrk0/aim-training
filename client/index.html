@@ -6,75 +6,180 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AIM TRAINER PRO</title>
     <style>
-      /* Electron loading screen */
+      /* AIM TRAINER PRO - Advanced Loading System */
       #loading-screen {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #3730a3 100%);
+        background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 25%, #2d1b69 50%, #3b1e7a 75%, #4c1d95 100%);
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        z-index: 9999;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         color: white;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      #loading-screen.fade-out {
+        opacity: 0;
+        transform: scale(1.05);
+      }
+      
+      .loading-container {
+        text-align: center;
+        animation: slideUp 1s ease-out;
       }
       
       .loading-logo {
-        font-size: 3rem;
-        font-weight: bold;
-        margin-bottom: 2rem;
-        background: linear-gradient(45deg, #f59e0b, #ef4444);
+        font-size: 4rem;
+        font-weight: 900;
+        margin-bottom: 3rem;
+        background: linear-gradient(45deg, #f59e0b 0%, #ef4444 25%, #8b5cf6 50%, #06b6d4 75%, #10b981 100%);
+        background-size: 300% 300%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        animation: pulse 2s ease-in-out infinite;
+        animation: gradientFlow 3s ease-in-out infinite, logoGlow 2s ease-in-out infinite;
+        text-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
       }
       
-      .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top: 4px solid #f59e0b;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
+      .loading-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+        animation: targetSpin 2s linear infinite;
+      }
+      
+      .loading-progress {
+        width: 300px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        margin: 2rem 0;
+        overflow: hidden;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+      }
+      
+      .loading-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #8b5cf6, #06b6d4, #10b981, #f59e0b);
+        background-size: 200% 100%;
+        border-radius: 2px;
+        animation: progressFlow 2s ease-in-out infinite, progressFill 4s ease-out;
+        width: 0%;
       }
       
       .loading-text {
-        font-size: 1.2rem;
-        opacity: 0.8;
-        animation: fadeInOut 2s ease-in-out infinite;
+        font-size: 1.3rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        opacity: 0.9;
+        animation: textPulse 2s ease-in-out infinite;
       }
       
-      @keyframes spin {
+      .loading-status {
+        font-size: 0.9rem;
+        opacity: 0.6;
+        margin-bottom: 1rem;
+        min-height: 1.2rem;
+      }
+      
+      .loading-dots {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-top: 1rem;
+      }
+      
+      .loading-dot {
+        width: 8px;
+        height: 8px;
+        background: linear-gradient(45deg, #8b5cf6, #06b6d4);
+        border-radius: 50%;
+        animation: dotBounce 1.4s ease-in-out infinite;
+      }
+      
+      .loading-dot:nth-child(1) { animation-delay: 0s; }
+      .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+      .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+      
+      @keyframes slideUp {
+        from { transform: translateY(50px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      
+      @keyframes gradientFlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+      
+      @keyframes logoGlow {
+        0%, 100% { filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.4)); }
+        50% { filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.6)); }
+      }
+      
+      @keyframes targetSpin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
       
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+      @keyframes progressFlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
       }
       
-      @keyframes fadeInOut {
-        0%, 100% { opacity: 0.8; }
-        50% { opacity: 0.5; }
+      @keyframes progressFill {
+        0% { width: 0%; }
+        25% { width: 25%; }
+        50% { width: 50%; }
+        75% { width: 75%; }
+        100% { width: 100%; }
+      }
+      
+      @keyframes textPulse {
+        0%, 100% { opacity: 0.9; }
+        50% { opacity: 0.6; }
+      }
+      
+      @keyframes dotBounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+      }
+      
+      /* Root element transition */
+      #root {
+        transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
       }
     </style>
   </head>
   <body>
-    <!-- Electron Loading Screen -->
+    <!-- AIM TRAINER PRO - Advanced Loading Screen -->
     <div id="loading-screen">
-      <div class="loading-logo">🎯 AIM TRAINER PRO</div>
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Initializing Desktop Experience...</div>
+      <div class="loading-container">
+        <div class="loading-logo">
+          <span class="loading-icon">🎯</span>AIM TRAINER PRO
+        </div>
+        
+        <div class="loading-progress">
+          <div class="loading-progress-bar"></div>
+        </div>
+        
+        <div class="loading-text">Initializing Elite Training System...</div>
+        <div class="loading-status" id="loading-status">Starting up...</div>
+        
+        <div class="loading-dots">
+          <div class="loading-dot"></div>
+          <div class="loading-dot"></div>
+          <div class="loading-dot"></div>
+        </div>
+      </div>
     </div>
     
-    <div id="root"></div>
+    <div id="root" style="opacity: 0; display: block; visibility: hidden;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html> 

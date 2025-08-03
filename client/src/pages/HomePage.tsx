@@ -8,6 +8,8 @@ export function HomePage() {
   const { scrollY } = useScroll()
   const y1 = useTransform(scrollY, [0, 300], [0, -50])
   const y2 = useTransform(scrollY, [0, 300], [0, -100])
+  
+  console.log('🏠 HomePage rendering with auth:', isAuthenticated)
 
   const features = [
     {

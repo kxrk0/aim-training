@@ -6,6 +6,8 @@ import { useElectron } from '@/hooks/useElectron'
 
 export function Layout() {
   const { isElectron, platform, appVersion } = useElectron()
+  
+  console.log('🏗️ Layout rendering, isElectron:', isElectron)
 
   useEffect(() => {
     // Set body class for platform-specific styling
@@ -30,9 +32,13 @@ export function Layout() {
       
       <main className={`transition-all duration-300 ${isElectron ? 'electron-main' : ''}`}>
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ 
+            duration: 0.8, 
+            ease: [0.4, 0, 0.2, 1],
+            staggerChildren: 0.1 
+          }}
         >
           <Outlet />
         </motion.div>
