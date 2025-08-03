@@ -360,8 +360,8 @@ function initializeAutoUpdater() {
 // ====================
 
 const https = require('https')
-const fs = require('fs')
-const path = require('path')
+// fs already imported at top of file
+// const path = require('path') - also already imported
 
 // Custom update configuration
 const UPDATE_CONFIG = {
