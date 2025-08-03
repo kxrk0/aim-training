@@ -1,6 +1,6 @@
 {
   "name": "aim-trainer-desktop",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Professional FPS Aim Training Desktop Application",
   "main": "electron/main.js",
   "homepage": "./",
