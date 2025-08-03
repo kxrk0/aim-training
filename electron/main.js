@@ -636,7 +636,7 @@ function installCustomUpdate() {
     console.log(`[CUSTOM-UPDATER] Installer path: ${customUpdateState.filePath}`)
 
     // Launch installer with delay to avoid EBUSY
-    setTimeout(() => {
+  setTimeout(() => {
       try {
         const { spawn } = require('child_process')
         const installer = spawn(customUpdateState.filePath, [], { 
@@ -897,13 +897,13 @@ function createSplashWindow() {
     </body>
     </html>
   `
-  
+
   splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHTML))
-  
+
   splashWindow.on('closed', () => {
     splashWindow = null
   })
-  
+
   // Start update check after splash screen loads
   splashWindow.webContents.once('dom-ready', () => {
     setTimeout(() => {
@@ -1398,8 +1398,8 @@ function startBackendServer() {
 // App event handlers
 app.whenReady().then(async () => {
   // Always create splash screen first
-  createSplashWindow()
-  
+    createSplashWindow()
+    
   // Development mode - skip update check, proceed to main app
   if (isDev) {
     setTimeout(() => {
@@ -1663,31 +1663,56 @@ async function installUpdateOnSplash(filePath) {
       throw new Error('Update file not found')
     }
 
-    sendSplashMessage('splash-status', { message: 'Launching installer...', type: '' })
+    sendSplashMessage('splash-status', { message: 'Preparing installation...', type: '' })
     
-    // Launch installer and quit app
+    // Close splash window first
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close()
+      splashWindow = null
+    }
+    
+    // Wait a moment for window to close
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    console.log('[SPLASH-UPDATER] Launching installer...')
+    
+    // Launch installer with proper detachment
     const { spawn } = require('child_process')
-    spawn(filePath, [], { 
+    const child = spawn(filePath, [], { 
       detached: true,
-      stdio: 'ignore'
+      stdio: 'ignore',
+      windowsHide: false
     })
-
-    // Give installer time to start, then quit
+    
+    // Unreference the child process so parent can exit
+    child.unref()
+    
+    console.log('[SPLASH-UPDATER] Installer launched, quitting app...')
+    
+    // Quit app immediately after launching installer
     setTimeout(() => {
       app.quit()
-    }, 2000)
+      process.exit(0)
+    }, 500)
 
   } catch (error) {
     console.error('[SPLASH-UPDATER] Install failed:', error.message)
-    sendSplashMessage('splash-status', { 
-      message: `Install failed: ${error.message}`, 
-      type: 'error' 
-    })
     
-    // Proceed to main app if install fails
-    setTimeout(() => {
-      proceedToMainApp()
-    }, 3000)
+    // Recreate splash and show error
+    if (!splashWindow || splashWindow.isDestroyed()) {
+      createSplashWindow()
+      setTimeout(() => {
+        sendSplashMessage('splash-status', { 
+          message: `Install failed: ${error.message}`, 
+          type: 'error' 
+        })
+        
+        // Proceed to main app after error
+        setTimeout(() => {
+          proceedToMainApp()
+        }, 3000)
+      }, 1000)
+    }
   }
 }
 
