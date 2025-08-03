@@ -22,9 +22,11 @@
     "electron:pack": "npm run build && electron-builder",
     "electron:dist": "npm run build && electron-builder --publish=never",
     "electron:publish": "npm run build && electron-builder --publish=always",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node -e \"if (process.env.NODE_ENV !== 'production') { const { execSync } = require('child_process'); try { execSync('electron-builder install-app-deps', { stdio: 'inherit' }); } catch (e) { console.log('Electron-builder not available, skipping...'); } }\"",
     "clean": "rimraf dist-electron && rimraf client/dist && rimraf server/dist",
-    "rebuild": "npm run clean && npm run build && npm run electron:pack"
+    "rebuild": "npm run clean && npm run build && npm run electron:pack",
+    "install:server": "cd server && npm install --production",
+    "install:vps": "npm run install:server && cd server && npm run build"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"

@@ -69,13 +69,14 @@ if [ ! -f "$PROJECT_DIR/server/.env" ]; then
     print_warning "Please edit $PROJECT_DIR/server/.env with your actual values!"
 fi
 
-# Install dependencies
-print_status "Installing dependencies..."
+# Install dependencies (server only)
+print_status "Installing server dependencies..."
+export NODE_ENV=production
+cd server
 npm install --production
 
 # Build server
 print_status "Building server..."
-cd server
 npm run build
 cd ..
 
