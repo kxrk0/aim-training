@@ -63,19 +63,28 @@ async function checkNetworkConnectivity() {
         port: 443,
         path: '/repos/kxrk0/aim-training/releases/latest',
         method: 'HEAD',
-        timeout: 5000
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'AIM-TRAINER-PRO/1.1.1 (electron-updater)'
+        }
       }, (res) => {
+        console.log('Auto-updater: Network check response:', res.statusCode)
         resolve(res.statusCode >= 200 && res.statusCode < 400)
       })
       
-      req.on('error', () => resolve(false))
+      req.on('error', (error) => {
+        console.log('Auto-updater: Network check error:', error.code)
+        resolve(false)
+      })
       req.on('timeout', () => {
+        console.log('Auto-updater: Network check timeout')
         req.destroy()
         resolve(false)
       })
       req.end()
     })
   } catch (error) {
+    console.error('Auto-updater: Network check exception:', error)
     return false
   }
 }
@@ -137,12 +146,12 @@ autoUpdater.on('checking-for-update', () => {
     splashWindow.webContents.send('status-update', 'Checking for updates...')
   }
   
-  // Set timeout for update check (15 seconds)
+  // Set timeout for update check (30 seconds)
   updateCheckTimeout = setTimeout(() => {
     if (!isUpdateCheckComplete) {
       handleUpdateCheckComplete('timeout')
     }
-  }, 15000)
+  }, 30000)
 })
 
 autoUpdater.on('update-available', (info) => {
@@ -892,8 +901,15 @@ async function initiateUpdateCheck() {
     const hasNetwork = await checkNetworkConnectivity()
     
     if (!hasNetwork) {
-      console.log('Auto-updater: No network connection detected')
-      handleUpdateCheckComplete('network-error')
+      console.log('Auto-updater: Network check failed, trying direct update check...')
+      // Try direct update check anyway (bypass network check)
+      try {
+        console.log('Auto-updater: Attempting direct update check...')
+        await autoUpdater.checkForUpdates()
+      } catch (directError) {
+        console.error('Auto-updater: Direct update check also failed:', directError)
+        handleUpdateCheckComplete('network-error')
+      }
       return
     }
     
