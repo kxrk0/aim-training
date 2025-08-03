@@ -272,12 +272,12 @@ function showUpdateReadyDialog(version) {
 
 // Network connectivity test
 async function testNetworkConnectivity() {
-  return new Promise((resolve) => {
+    return new Promise((resolve) => {
     const options = {
-      hostname: 'api.github.com',
-      port: 443,
-      path: '/repos/kxrk0/aim-training/releases/latest',
-      method: 'HEAD',
+        hostname: 'api.github.com',
+        port: 443,
+        path: '/repos/kxrk0/aim-training/releases/latest',
+        method: 'HEAD',
       timeout: 10000,
       headers: {
         'User-Agent': 'AIM-TRAINER-PRO/1.0.0'
@@ -285,17 +285,17 @@ async function testNetworkConnectivity() {
     }
 
     const req = require('https').request(options, (res) => {
-      resolve(res.statusCode >= 200 && res.statusCode < 400)
-    })
+        resolve(res.statusCode >= 200 && res.statusCode < 400)
+      })
+      
+      req.on('error', () => resolve(false))
+      req.on('timeout', () => {
+        req.destroy()
+        resolve(false)
+      })
 
-    req.on('error', () => resolve(false))
-    req.on('timeout', () => {
-      req.destroy()
-      resolve(false)
+      req.end()
     })
-
-    req.end()
-  })
 }
 
 // IPC handlers for renderer communication
@@ -633,17 +633,37 @@ function installCustomUpdate() {
       throw new Error('Update file not found')
     }
 
-    // Launch installer
-    const { spawn } = require('child_process')
-    spawn(customUpdateState.filePath, [], { 
-      detached: true,
-      stdio: 'ignore'
-    })
+    console.log(`[CUSTOM-UPDATER] Installer path: ${customUpdateState.filePath}`)
 
-    // Quit application
+    // Launch installer with delay to avoid EBUSY
     setTimeout(() => {
-      app.quit()
-    }, 1000)
+      try {
+        const { spawn } = require('child_process')
+        const installer = spawn(customUpdateState.filePath, [], { 
+          detached: true,
+          stdio: 'ignore'
+        })
+        
+        installer.unref() // Allow parent to exit
+        console.log('[CUSTOM-UPDATER] Installer launched successfully')
+        
+        // Quit application after installer starts
+        setTimeout(() => {
+          app.quit()
+        }, 2000)
+        
+      } catch (spawnError) {
+        console.error('[CUSTOM-UPDATER] Spawn error:', spawnError.message)
+        
+        // Fallback: Try opening installer with default handler
+        require('electron').shell.openPath(customUpdateState.filePath)
+        console.log('[CUSTOM-UPDATER] Opened installer with default handler')
+        
+        setTimeout(() => {
+          app.quit()
+        }, 2000)
+      }
+    }, 500)
 
   } catch (error) {
     console.error('[CUSTOM-UPDATER] Install failed:', error.message)
@@ -842,78 +862,56 @@ function createSplashWindow() {
       </div>
       <div class="text" id="status">Checking for updates...</div>
       <script>
-        const { ipcRenderer } = require('electron')
+        const { ipcRenderer } = require('electron');
         
-        // Track status updates
-        let lastStatus = ''
-        let statusTimeout = null
-        
-        // Update status messages with improved handling
-        ipcRenderer.on('status-update', (event, message) => {
-          lastStatus = message
-          document.getElementById('status').textContent = message
-          
-          // Clear any existing timeout
-          if (statusTimeout) {
-            clearTimeout(statusTimeout)
-          }
-          
-          // Auto-hide spinner for certain messages
-          if (message.includes('Starting') || message.includes('timeout') || message.includes('failed')) {
-            statusTimeout = setTimeout(() => {
-              document.getElementById('spinner').style.display = 'none'
-            }, 1000)
-          }
-        })
-        
-        // Show download progress with enhanced UI
-        ipcRenderer.on('download-progress', (event, progress) => {
-          document.getElementById('spinner').style.display = 'none'
-          document.getElementById('progress-container').style.display = 'block'
-          document.getElementById('progress-bar').style.width = progress.percent + '%'
-          
-          const percent = Math.round(progress.percent)
-          const speed = (progress.bytesPerSecond / (1024 * 1024)).toFixed(1) // MB/s
-          document.getElementById('status').textContent = 'Downloading update: ' + percent + '% (' + speed + ' MB/s)'
-        })
-        
-        // Update completed with countdown
-        ipcRenderer.on('update-ready', (event) => {
-          document.getElementById('status').textContent = 'Update ready - Restarting in 3s...'
-          document.getElementById('spinner').style.display = 'none'
-          document.getElementById('progress-container').style.display = 'none'
-          
-          let countdown = 3
-          const countdownInterval = setInterval(() => {
-            countdown--
-                         if (countdown > 0) {
-               document.getElementById('status').textContent = 'Update ready - Restarting in ' + countdown + 's...'
-             } else {
-              document.getElementById('status').textContent = 'Restarting...'
-              clearInterval(countdownInterval)
-            }
-          }, 1000)
-        })
-        
-        // Fallback timeout - if splash screen is stuck for too long
-        setTimeout(() => {
-          if (lastStatus.includes('Checking') || lastStatus === '') {
-            document.getElementById('status').textContent = 'Starting application...'
-            document.getElementById('spinner').style.display = 'none'
-          }
-        }, 20000) // 20 second fallback
+                 // Update status messages
+         ipcRenderer.on('splash-status', (event, data) => {
+           const statusElement = document.getElementById('status');
+           statusElement.textContent = data.message;
+           if (data.type) {
+             statusElement.className = 'text ' + data.type;
+           }
+         });
+         
+         // Update progress
+         ipcRenderer.on('splash-progress', (event, data) => {
+           const container = document.getElementById('progress-container');
+           const bar = document.getElementById('progress-bar');
+           const spinner = document.getElementById('spinner');
+           const status = document.getElementById('status');
+           
+           if (data.show) {
+             container.style.display = 'block';
+             spinner.style.display = 'none';
+           }
+           
+           if (data.percent !== undefined) {
+             bar.style.width = data.percent + '%';
+           }
+           
+           if (data.info) {
+             status.textContent = data.info;
+           }
+         });
       </script>
     </body>
     </html>
   `
-
+  
   splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHTML))
-
+  
   splashWindow.on('closed', () => {
     splashWindow = null
   })
-
-  return splashWindow
+  
+  // Start update check after splash screen loads
+  splashWindow.webContents.once('dom-ready', () => {
+    setTimeout(() => {
+      if (!isDev) {
+        checkForUpdatesOnSplash()
+      }
+    }, 1000)
+  })
 }
 
 function startClientServer() {
@@ -1399,27 +1397,20 @@ function startBackendServer() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  // Initialize CUSTOM HTTP update system (more reliable than electron-updater)
-  initializeCustomUpdater()
-
-  // Create splash screen for production
-  if (!isDev) {
-    createSplashWindow()
-    
-    // In production, create main window after splash
+  // Always create splash screen first
+  createSplashWindow()
+  
+  // Development mode - skip update check, proceed to main app
+  if (isDev) {
     setTimeout(() => {
-      if (!mainWindow) {
-        createWindow()
-      }
-    }, 3000)
-  } else {
-    // Development mode - create window immediately
-    createWindow()
+      proceedToMainApp()
+    }, 2000)
   }
+  // Production mode - splash screen will handle update check and main app creation
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+        createWindow()
     }
   })
 })
@@ -1498,3 +1489,220 @@ app.on('web-contents-created', (event, contents) => {
     `)
   })
 }) 
+
+// Splash screen update system
+function sendSplashMessage(channel, data) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send(channel, data)
+  }
+}
+
+// Check for updates on splash screen
+async function checkForUpdatesOnSplash() {
+  try {
+    sendSplashMessage('splash-status', { message: 'Checking for updates...', type: '' })
+    
+    const currentVersion = app.getVersion()
+    console.log(`[SPLASH-UPDATER] Current version: ${currentVersion}`)
+    
+    // Get latest release from GitHub API
+    const releaseInfo = await fetchLatestRelease()
+    
+    if (!releaseInfo) {
+      throw new Error('Failed to fetch release info')
+    }
+
+    const latestVersion = releaseInfo.tag_name.replace('v', '')
+    console.log(`[SPLASH-UPDATER] Latest version: ${latestVersion}`)
+
+    // Compare versions
+    if (compareVersions(latestVersion, currentVersion) > 0) {
+      // Update available!
+      const asset = releaseInfo.assets.find(asset => 
+        asset.name.includes('.exe') && asset.name.includes('Setup')
+      )
+
+      if (asset) {
+        sendSplashMessage('splash-status', { 
+          message: `Update available: v${latestVersion}`, 
+          type: 'success' 
+        })
+        
+        await downloadUpdateOnSplash(latestVersion, asset.browser_download_url)
+      } else {
+        throw new Error('No compatible installer found in release')
+      }
+    } else {
+      // No updates available
+      sendSplashMessage('splash-status', { message: 'Application is up to date', type: 'success' })
+      setTimeout(() => {
+        proceedToMainApp()
+      }, 2000)
+    }
+
+  } catch (error) {
+    console.error('[SPLASH-UPDATER] Check failed:', error.message)
+    sendSplashMessage('splash-status', { 
+      message: `Update check failed: ${error.message}`, 
+      type: 'error' 
+    })
+    
+    // Proceed to main app even if update check fails
+    setTimeout(() => {
+      proceedToMainApp()
+    }, 3000)
+  }
+}
+
+// Download update on splash screen
+async function downloadUpdateOnSplash(version, downloadUrl) {
+  try {
+    sendSplashMessage('splash-status', { message: 'Downloading update...', type: '' })
+    sendSplashMessage('splash-progress', { show: true, percent: 0, info: 'Preparing download...' })
+    
+    // Ensure download directory exists
+    if (!fs.existsSync(UPDATE_CONFIG.downloadPath)) {
+      fs.mkdirSync(UPDATE_CONFIG.downloadPath, { recursive: true })
+    }
+
+    const fileName = `AIM-TRAINER-PRO-Setup-${version}.exe`
+    const filePath = path.join(UPDATE_CONFIG.downloadPath, fileName)
+    
+    // Download with progress
+    await downloadFileWithSplashProgress(downloadUrl, filePath, version)
+    
+    sendSplashMessage('splash-status', { message: 'Installing update...', type: '' })
+    sendSplashMessage('splash-progress', { percent: 100, info: 'Preparing installation...' })
+    
+    // Install update
+    await installUpdateOnSplash(filePath)
+
+  } catch (error) {
+    console.error('[SPLASH-UPDATER] Download failed:', error.message)
+    sendSplashMessage('splash-status', { 
+      message: `Download failed: ${error.message}`, 
+      type: 'error' 
+    })
+    
+    // Proceed to main app even if download fails
+    setTimeout(() => {
+      proceedToMainApp()
+    }, 3000)
+  }
+}
+
+// Download file with splash progress
+function downloadFileWithSplashProgress(url, filePath, version) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(filePath)
+    let totalBytes = 0
+    let downloadedBytes = 0
+
+    const request = https.get(url, (response) => {
+      // Handle redirects
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        return downloadFileWithSplashProgress(response.headers.location, filePath, version).then(resolve).catch(reject)
+      }
+
+      if (response.statusCode !== 200) {
+        reject(new Error(`Download failed with status ${response.statusCode}`))
+        return
+      }
+
+      totalBytes = parseInt(response.headers['content-length'], 10) || 0
+
+      response.on('data', (chunk) => {
+        downloadedBytes += chunk.length
+        if (totalBytes > 0) {
+          const percent = Math.round((downloadedBytes / totalBytes) * 100)
+          const mbDownloaded = (downloadedBytes / 1024 / 1024).toFixed(1)
+          const mbTotal = (totalBytes / 1024 / 1024).toFixed(1)
+          
+          sendSplashMessage('splash-progress', {
+            percent: percent,
+            info: `${mbDownloaded} MB / ${mbTotal} MB (${percent}%)`
+          })
+        }
+      })
+
+      response.pipe(file)
+
+      file.on('finish', () => {
+        file.close()
+        sendSplashMessage('splash-progress', { 
+          percent: 100, 
+          info: 'Download completed!' 
+        })
+        resolve()
+      })
+
+      file.on('error', (error) => {
+        fs.unlink(filePath, () => {}) // Delete partial file
+        reject(error)
+      })
+    })
+
+    request.on('error', (error) => {
+      fs.unlink(filePath, () => {}) // Delete partial file
+      reject(error)
+    })
+
+    request.setTimeout(120000, () => { // 2 minute timeout
+      request.destroy()
+      reject(new Error('Download timeout'))
+    })
+  })
+}
+
+// Install update on splash screen
+async function installUpdateOnSplash(filePath) {
+  try {
+    console.log('[SPLASH-UPDATER] Installing update...')
+    
+    if (!fs.existsSync(filePath)) {
+      throw new Error('Update file not found')
+    }
+
+    sendSplashMessage('splash-status', { message: 'Launching installer...', type: '' })
+    
+    // Launch installer and quit app
+    const { spawn } = require('child_process')
+    spawn(filePath, [], { 
+      detached: true,
+      stdio: 'ignore'
+    })
+
+    // Give installer time to start, then quit
+    setTimeout(() => {
+      app.quit()
+    }, 2000)
+
+  } catch (error) {
+    console.error('[SPLASH-UPDATER] Install failed:', error.message)
+    sendSplashMessage('splash-status', { 
+      message: `Install failed: ${error.message}`, 
+      type: 'error' 
+    })
+    
+    // Proceed to main app if install fails
+    setTimeout(() => {
+      proceedToMainApp()
+    }, 3000)
+  }
+}
+
+// Proceed to main application
+function proceedToMainApp() {
+  sendSplashMessage('splash-status', { message: 'Starting application...', type: 'success' })
+  sendSplashMessage('splash-hide-spinner')
+  
+  setTimeout(() => {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close()
+    }
+    
+    if (!mainWindow) {
+      createWindow()
+    }
+  }, 1500)
+} 
